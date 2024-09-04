@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 from types import SimpleNamespace
 import torch.nn.functional as F
-
+import pdb
 
 def get_timestep_embedding(timesteps, embedding_dim):
     assert len(timesteps.shape) == 1
@@ -38,36 +38,50 @@ class WideAndDeep(nn.Module):
         super(WideAndDeep, self).__init__()
 
         # Wide part (linear model for continuous attributes)
-        self.wide_fc = nn.Linear(5, embedding_dim)
+        self.wide_fc = nn.Linear(6, embedding_dim)
 
         # Deep part (neural network for categorical attributes)
         self.depature_embedding = nn.Embedding(288, hidden_dim)
         self.sid_embedding = nn.Embedding(257, hidden_dim)
         self.eid_embedding = nn.Embedding(257, hidden_dim)
-        self.deep_fc1 = nn.Linear(hidden_dim*3, embedding_dim)
+        
+        self.deep_fc1 = nn.Linear(hidden_dim, embedding_dim)
         self.deep_fc2 = nn.Linear(embedding_dim, embedding_dim)
+        
+        self.label_embedding = nn.Embedding(4, hidden_dim)
 
     def forward(self, attr):
-        # Continuous attributes
-        continuous_attrs = attr[:, 1:6]
+        # # Continuous attributes
+        # continuous_attrs = attr[:, 1:6]
 
         # Categorical attributes
-        depature, sid, eid = attr[:, 0].long(
-        ), attr[:, 6].long(), attr[:, 7].long()
+        # depature, sid, eid = attr[:, 0].long(
+        # ), attr[:, 6].long(), attr[:, 7].long()
 
-        # Wide part
+        # # Wide part
+        # wide_out = self.wide_fc(continuous_attrs)
+
+        # # Deep part
+        # depature_embed = self.depature_embedding(depature)
+        # sid_embed = self.sid_embedding(sid)
+        # eid_embed = self.eid_embedding(eid)
+        # categorical_embed = torch.cat(
+        #     (depature_embed, sid_embed, eid_embed), dim=1)
+        # deep_out = F.relu(self.deep_fc1(categorical_embed))
+        # deep_out = self.deep_fc2(deep_out)
+        # # Combine wide and deep embeddings
+        # combined_embed = wide_out + deep_out
+        
+        continuous_attrs = attr[:, :-1]
         wide_out = self.wide_fc(continuous_attrs)
-
-        # Deep part
-        depature_embed = self.depature_embedding(depature)
-        sid_embed = self.sid_embedding(sid)
-        eid_embed = self.eid_embedding(eid)
-        categorical_embed = torch.cat(
-            (depature_embed, sid_embed, eid_embed), dim=1)
+        
+        label = attr[:,-1].long()
+        categorical_embed = label_embed = self.label_embedding(label)
         deep_out = F.relu(self.deep_fc1(categorical_embed))
         deep_out = self.deep_fc2(deep_out)
-        # Combine wide and deep embeddings
-        combined_embed = wide_out + deep_out
+        
+        # combined_embed = wide_out + deep_out
+        combined_embed = deep_out
 
         return combined_embed
 

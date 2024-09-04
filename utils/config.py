@@ -3,7 +3,7 @@ args = {
         'dataset': 'Chengdu',
         'traj_path1': '/xxxxxxx',
         'head_path2': '/xxxxxxx',
-        'traj_length': 200,
+        'traj_length': 248,
         'channels': 2,
         'uniform_dequantization': False,
         'gaussian_dequantization': False,
@@ -32,6 +32,7 @@ args = {
         'num_diffusion_timesteps': 500,
     },
     'training': {
+        'job_name': '0904_attr_label_embed_only',
         'batch_size': 1024,
         'n_epochs': 200,
         'n_iters': 5000000,
