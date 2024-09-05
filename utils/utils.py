@@ -64,7 +64,8 @@ def compute_alpha(beta, t):
 
 
 def p_xt(xt, noise, t, next_t, beta, eta=0):
-    at = compute_alpha(beta.cuda(), t.long())
+    # at = compute_alpha(beta.cuda(), t.long())
+    at = compute_alpha(beta, t.long())
     at_next = compute_alpha(beta, next_t.long())
     x0_t = (xt - noise * (1 - at).sqrt()) / at.sqrt()
     c1 = (eta * ((1 - at / at_next) * (1 - at_next) / (1 - at)).sqrt())

@@ -450,7 +450,6 @@ if __name__ == "__main__":
     # parser.add_argument('--llm_dim', type=int, default='4096', help='LLM model dimension')# LLama7b:4096; GPT2-small:768; BERT-base:768
     parser.add_argument('--job_name', type=str, default='test', help='activation')
     tmp_args = parser.parse_args()
-    config.training.job_name = tmp_args.job_name
     
     print(args)
     # Load configuration
@@ -458,6 +457,8 @@ if __name__ == "__main__":
     for k, v in args.items():
         temp[k] = SimpleNamespace(**v)
     config = SimpleNamespace(**temp)
+
+    config.training.job_name = tmp_args.job_name
 
     # root_dir = Path(__name__).resolve().parents[0]
     root_dir = "/home/yichen/DiffTraj/results"

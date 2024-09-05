@@ -1,6 +1,7 @@
 
 CUDA_VISIBLE_DEVICES=1 \
-python main.py 
+python main.py \
+--job_name test
 
 
 

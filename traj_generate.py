@@ -87,24 +87,24 @@ lengths=248
 Gen_traj = []
 Gen_head = []
 for i in tqdm(range(1)):
-    print(i)
     head = next(iter(dataloader))
     # lengths = head[:, 3]
     # lengths = lengths * len_std + len_mean
     # lengths = lengths.int()
     # tes = head[:,:6].numpy()
     # Gen_head.extend((tes*hstd+hmean))
+   
+    # Start with random noise
+    x = torch.randn(batchsize, 2, config.data.traj_length)
     if use_gpu:
         head = head.cuda()
-    # Start with random noise
-    x = torch.randn(batchsize, 2, config.data.traj_length).cuda()
+        x = x.cuda()
     ims = []
     n = x.size(0)
     seq_next = [-1] + list(seq[:-1])
     for i, j in zip(reversed(seq), reversed(seq_next)):
-        print(i,j)
-        t = (torch.ones(n) * i).to(x.device)
-        next_t = (torch.ones(n) * j).to(x.device)
+        t = (torch.ones(n) * i)
+        next_t = (torch.ones(n) * j)
         if use_gpu:
             t = t.to(x.device)
             next_t = next_t.to(x.device)
@@ -116,11 +116,19 @@ for i in tqdm(range(1)):
     trajs = ims[-1].cpu().numpy()
     trajs = trajs[:,:2,:]
     # resample the trajectory length
-    for j in range(batchsize):
-        print(j)
+    # for j in range(batchsize):
+    for j in range(1):
         new_traj = resample_trajectory(trajs[j].T, lengths)
         # new_traj = resample_trajectory(trajs[j].T, lengths[j])
         # new_traj = new_traj * std + mean
+        
+        # lat_min,lat_max = (45.230416, 45.9997262293)
+        # lon_min,lon_max = (-74.31479102, -72.81248199999999)
+        lat_min,lat_max = (18.249901, 55.975593)
+        lon_min,lon_max = (-122.3315333, 126.998528)
+        new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+        new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+    
         Gen_traj.append(new_traj)
     break
 
