@@ -32,7 +32,7 @@ args = {
         'num_diffusion_timesteps': 500,
     },
     'training': {
-        'job_name': '0904_attr_label_embed_only',
+        'job_name': 'test',
         'batch_size': 1024,
         'n_epochs': 200,
         'n_iters': 5000000,
