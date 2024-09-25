@@ -432,16 +432,20 @@ class Model(nn.Module):
                                         stride=1,
                                         padding=1)
 
-    def forward(self, x, t, extra_embed=None):
+    def forward(self, x, t, extra_embed=None, img_feat=None):
         assert x.shape[2] == self.resolution
 
         # timestep embedding
+        # pdb.set_trace()
         temb = get_timestep_embedding(t, self.ch)
         temb = self.temb.dense[0](temb)
         temb = nonlinearity(temb)
         temb = self.temb.dense[1](temb)
         if extra_embed is not None:
             temb = temb + extra_embed
+        # pdb.set_trace()
+        if img_feat is not None:
+            temb = temb + img_feat
 
         # downsampling
         hs = [self.conv_in(x)]
@@ -499,12 +503,12 @@ class Guide_UNet(nn.Module):
         self.guide_emb = WideAndDeep(self.ch, mode=config.model.mode)
         self.place_emb = WideAndDeep(self.ch, mode=config.model.mode)
 
-    def forward(self, x, t, attr):
+    def forward(self, x, t, attr, img_feat=None):
         guide_emb = self.guide_emb(attr)
         place_vector = torch.zeros(attr.shape, device=attr.device)
         place_emb = self.place_emb(place_vector)
-        cond_noise = self.unet(x, t, guide_emb)
-        uncond_noise = self.unet(x, t, place_emb)
+        cond_noise = self.unet(x, t, guide_emb, img_feat)
+        uncond_noise = self.unet(x, t, place_emb, None)
         pred_noise = cond_noise + self.guidance_scale * (cond_noise -
                                                          uncond_noise)
         return pred_noise

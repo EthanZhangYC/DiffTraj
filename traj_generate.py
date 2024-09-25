@@ -86,7 +86,13 @@ x0 = x0.permute(0,2,1)
 #     '/home/yichen/DiffTraj/results/DiffTraj/0917_label_max_vajb_epoch500_unnorm_bs512_interpolated_rmse/models/09-18-13-04-35/unet_300.pt',
 #     '/home/yichen/DiffTraj/results/DiffTraj/0917_label_max_vajb_epoch500_unnorm_bs512_interpolated_rmse/models/09-18-13-04-35/unet_500.pt',
 # ]
-
+model_dir_list=[
+    "/home/yichen/DiffTraj/results/DiffTraj/0924_label_oridiff_epoch500_nopad_bs512/models/09-24-22-05-47/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/0925_label_oridiff_epoch500_nopad_bs512_shuffle/models/09-25-08-05-15/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/0925_label_oridiff_epoch500_nopad_bs512_shuffle_unnorm/models/09-25-09-12-37/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/0925_label_oridiff_epoch500_nopad_bs512_shuffle_lr1e4/models/09-25-10-08-19/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/0925_label_oridiff_epoch500_nopad_bs512_shuffle_lr1e5/models/09-25-10-05-46/unet_500.pt"
+]
 cnt=0
 for model_dir in model_dir_list:
     # cnt+=1
@@ -139,8 +145,10 @@ for model_dir in model_dir_list:
     head = np.array([7e-2, 5.05e-1, 2.6863e-2, 23.61, 7e-2, 5.05e-1, 2.6863e-2, 23.61, 0])   
     head = np.array([1.4630e+00, 6.2562e-04, 5.6896e-03, 2.3672e+01, 4.5764e+00, 1.2705e+00,
             1.3502e+00, 2.7067e+02, 3])   
-    head = np.array([0.2, 0.06, 0.0055, 23, 0.1, 0.1,
-            0.1, 0, 0])   
+    head = np.array([0.2, 0.06, 0.0055, 23, 0.1, 0.1, 0.1, 0, 0])   
+    head = np.array([3.6685e-02, 1.2650e+03, 1.4792e-04, 2.9288e-02, 0.0000e+00])   
+    # [3.9043e-02, 1.2200e+03, 1.5743e-04, 3.1675e-02, 0.0000e+00]
+    # [6.8350e-02, 4.9600e+02, 2.7560e-04, 1.3826e-01, 3.0000e+00]
     head = np.tile(head,[5,1])
     head = torch.from_numpy(head).float()
 
@@ -231,8 +239,8 @@ for model_dir in model_dir_list:
             
             # print(new_traj)
             
-            # new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
-            # new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+            new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+            new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
             Gen_traj.append(new_traj)
         break
 

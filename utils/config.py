@@ -3,7 +3,7 @@ args = {
         'dataset': 'Chengdu',
         'traj_path1': '/xxxxxxx',
         'head_path2': '/xxxxxxx',
-        'traj_length': 248,
+        'traj_length': 600,
         'channels': 2,
         'uniform_dequantization': False,
         'gaussian_dequantization': False,
