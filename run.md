@@ -1,19 +1,10 @@
 
 --mode label_only \
-
 --mode label_max_vajb \
-
-
-CUDA_VISIBLE_DEVICES=6 \
-python main.py \
 --mode label_avgmax_vajb \
---epoch 500 \
---batch_size 1 \
---job_name 0911_label_avgmax_vajb_epoch500_padmask_bs1
-
-
-
---mode label_avgmax_vajb \
+--mode label_oridiff \
+--mode label_oridiff_img \
+--mode label_oridiff_normlentime_seid \
 --lr 5e-5 \
 --n_step 2000 \
 --epoch 500 \
@@ -22,14 +13,30 @@ python main.py \
 --unnormalize \
 --guidance_scale 0 \
 --loss rmse \
+--filter_area \
+--model unet_nocond \
 
-CUDA_VISIBLE_DEVICES=0 \
+CUDA_VISIBLE_DEVICES=2 \
 python main.py \
---mode label_oridiff \
---epoch 500 \
+--mode label_oridiff_img \
+--epoch 2000 \
 --batch_size 512 \
 --filter_nopad \
---job_name 0925_label_oridiff_epoch500_nopad_bs512_shuffle_noema
+--job_name 0930_label_oridiff_img_epoch2000_nopad_bs512_shuffle
+
+CUDA_VISIBLE_DEVICES=3 \
+python main.py \
+--mode label_oridiff_normlentime_seid \
+--epoch 1000 \
+--batch_size 512 \
+--filter_area \
+--interpolated \
+--traj_len 200 \
+--lr 1e-5 \
+--job_name 1003_label_oridiff_normlentime_seid_epoch1000_bs512_shuffle_filterarea_interlen200_lr1e5
+
+
+
 
 
 
@@ -41,62 +48,40 @@ python main.py \
 
 
 CUDA_LAUNCH_BLOCKING=1 \
-CUDA_VISIBLE_DEVICES=2 \
+
+CUDA_VISIBLE_DEVICES=4 \
 python main.py \
---mode label_oridiff \
+--mode label_oridiff_normlentime_seid \
 --epoch 200 \
 --lr 5e-5 \
---batch_size 128 \
---filter_nopad \
+--batch_size 16 \
+--filter_area \
+--interpolated \
+--traj_len 200 \
 --job_name test
 
---unnormalize \
 
 
 
 
 
 
---resume /home/yichen/DiffTraj/results/DiffTraj/0911_label_max_vajb_epoch500/models/09-11-16-13-28/unet_500.pt
-
-CUDA_VISIBLE_DEVICES=7 \
-python traj_generate.py \
---job_name generate_test \
---mode label_max_vajb \
---resume 
-
-CUDA_VISIBLE_DEVICES=7 \
-python traj_generate.py \
---job_name generate_test \
---mode label_avgmax_vajb \
---resume /home/yichen/DiffTraj/results/DiffTraj/0912_label_avgmax_vajb_epoch1000_nopad_unnorm/models/09-12-13-37-06/unet_1000.pt
-
---resume /home/yichen/DiffTraj/results/DiffTraj/0911_label_avgmax_vajb_epoch500_nopad/models/09-11-20-22-39/unet_500.pt
---resume /home/yichen/DiffTraj/results/DiffTraj/0911_label_avgmax_vajb_epoch500_nopad/models/09-11-20-24-19/unet_500.pt
 
 
 
 
-CUDA_VISIBLE_DEVICES=7 \
-python traj_generate.py \
---job_name generate_test \
---mode label_avgmax_vajb \
---resume /home/yichen/DiffTraj/model.pt
-
-
+############################################################################################################################################################################################################################################
 
 
 CUDA_VISIBLE_DEVICES=6 \
 python traj_generate.py \
 --job_name generate_test \
---mode label_max_vajb \
---interpolated \
---resume results/DiffTraj/0916_label_max_vajb_epoch500_nopad_unnorm_bs512_nstep50/models/09-16-17-35-29/unet_500.pt
+--mode label_oridiff_img 
 
-
-
-CUDA_VISIBLE_DEVICES=6 \
-python traj_generate_ori.py \
+CUDA_VISIBLE_DEVICES=4 \
+python traj_generate.py \
 --job_name generate_test \
---mode label_oridiff \
---resume /home/yichen/DiffTraj/results/DiffTraj/0924_label_oridiff_epoch500_nopad_bs512/models/09-24-22-05-47/unet_500.pt
+--mode label_oridiff_normlentime_seid
+
+--mode oridiff_normlentime_seid 
+

@@ -40,19 +40,6 @@ def gather(consts: torch.Tensor, t: torch.Tensor):
     return c.reshape(-1, 1, 1)
 
 
-class DimConverter(nn.Module):
-    def __init__(self, input_dim=64, out_dim=64):
-        super(DimConverter, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, out_dim),
-            # # nn.ReLU(),
-            # nn.Linear(out_dim, out_dim),
-            # # nn.ReLU()
-        )
-        
-    def forward(self, x): 
-        x = self.fc(x)
-        return x
 
 def main(config, logger, exp_dir, args):
 
@@ -64,7 +51,11 @@ def main(config, logger, exp_dir, args):
         return mean + (var**0.5) * eps, eps  # also returns noise
 
     # Create the model
-    unet = Guide_UNet(config).cuda()
+    if config.model.model == 'unet':
+        unet = Guide_UNet(config).cuda()
+    elif config.model.model == "unet_nocond":
+        unet = Guide_UNet_nocond(config).cuda()
+    # unet = Guide_UNet(config).cuda()
     # print(unet)
     
     # traj = np.load('./xxxxxx',
@@ -85,7 +76,7 @@ def main(config, logger, exp_dir, args):
     #                         batch_size=config.training.batch_size,
     #                         shuffle=True,
     #                         num_workers=8)
-    _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori, train_loader_source_mix = load_data_img(config)
+    _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
     dataloader = train_loader_source_ori
 
     # Training params
@@ -118,21 +109,43 @@ def main(config, logger, exp_dir, args):
         losses = []  # Store losses for later plotting
         for _, batch_data in enumerate(dataloader):
             x0 = batch_data[0][:,:,:2].cuda() 
-            label = batch_data[1].unsqueeze(1)
+            label = batch_data[-1].unsqueeze(1)
             
+            if "seid" in config.model.mode:
+                sid = batch_data[1][:,0].unsqueeze(1)
+                eid = batch_data[1][:,1].unsqueeze(1)
+
             # pad_mask = batch_data[0][:,:,2]!=0
             # x0 = x0[pad_mask].unsqueeze(0)
             
+            trip_len = torch.sum(batch_data[0][:,:,2]!=0, dim=1).unsqueeze(1)
             max_feat = torch.max(batch_data[0][:,:,4:8], dim=1)[0] # v, a, j, br
-            avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (torch.sum(batch_data[0][:,:,2]!=0, dim=1)+1e-6).unsqueeze(1)
-            # pdb.set_trace()
+            avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (trip_len+1e-6)
             total_dist = torch.sum(batch_data[0][:,:,3], dim=1).unsqueeze(1)
             total_time = torch.sum(batch_data[0][:,:,2], dim=1).unsqueeze(1)
             avg_dist = avg_feat[:,0].unsqueeze(1)
             avg_speed = avg_feat[:,1].unsqueeze(1)
             
-            # head = torch.cat([avg_feat,max_feat,label],dim=1)
-            head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
+            trip_len = trip_len / config.data.traj_length
+            total_time = total_time / 3000.
+            
+            # print((sid>=256).any(),(eid>=256).any())
+            # if (eid>=256).any():
+            #     pdb.set_trace()
+            # pdb.set_trace()
+            
+            # head = torch.cat([avg_feat,max_feat,label],dim=1)            
+            if config.model.mode == "label_oridiff_normlentime":
+                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, label],dim=1)
+            elif config.model.mode == "label_oridiff":
+                head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
+            elif config.model.mode == "oridiff_normlentime_seid":
+                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1)
+            elif config.model.mode == "label_oridiff_normlentime_seid":
+                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid, label],dim=1)
+            else:
+                raise NotImplementedError
+
             head = head.cuda()
             
             t = torch.randint(low=0, high=n_steps,
@@ -176,9 +189,11 @@ def main_img(config, logger, exp_dir, args):
         return mean + (var**0.5) * eps, eps  # also returns noise
 
     # Create the model
-    unet = Guide_UNet(config).cuda()
+    if config.model.model == 'unet':
+        unet = Guide_UNet(config).cuda()
+    elif config.model.model == "unet_nocond":
+        unet = Guide_UNet_nocond(config).cuda()
     img_encoder = resnet50(True).cuda()
-    dim_converter = DimConverter(input_dim=1000, out_dim=config.model.ch).cuda()
     for name,param in img_encoder.named_parameters():
         param.requires_grad = False 
     # print(unet)
@@ -215,7 +230,8 @@ def main_img(config, logger, exp_dir, args):
     lr = config.training.lr
 
     # optimizer
-    optim = torch.optim.AdamW([{"params": unet.parameters()},{"params": dim_converter.parameters()}], lr=lr)  # Optimizer
+    optim = torch.optim.AdamW(unet.parameters(), lr=lr)  # Optimizer
+    # optim = torch.optim.AdamW([{"params": unet.parameters()},{"params": dim_converter.parameters()}], lr=lr)  # Optimizer
     # optimizer_g = Adam([
     #     {"params": G.parameters()},
     #     {"params": dim_converter.parameters()},
@@ -237,17 +253,16 @@ def main_img(config, logger, exp_dir, args):
     for epoch in range(1, config.training.n_epochs + 1):
         losses = []  # Store losses for later plotting
         for _, batch_data in enumerate(dataloader):
-            print(1)
             x0 = batch_data[0][:,:,:2].cuda() 
             img = batch_data[1].cuda() 
             label = batch_data[2].unsqueeze(1)
             
             img_feat = img_encoder(img.float())
-            img_feat = dim_converter(img_feat)
+            # img_feat = dim_converter(img_feat)
             
             max_feat = torch.max(batch_data[0][:,:,4:8], dim=1)[0] # v, a, j, br
             avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (torch.sum(batch_data[0][:,:,2]!=0, dim=1)+1e-6).unsqueeze(1)
-            # pdb.set_trace()
+
             total_dist = torch.sum(batch_data[0][:,:,3], dim=1).unsqueeze(1)
             total_time = torch.sum(batch_data[0][:,:,2], dim=1).unsqueeze(1)
             avg_dist = avg_feat[:,0].unsqueeze(1)
@@ -296,14 +311,19 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=2e-4, help='activation')
     parser.add_argument('--mode', type=str, default='label_only', help='activation')
     parser.add_argument('--filter_nopad', action='store_true', help='whether to output attention in encoder')
+    parser.add_argument('--filter_area', action='store_true', help='whether to output attention in encoder')
     parser.add_argument('--unnormalize', action='store_true', help='whether to output attention in encoder')
     parser.add_argument('--interpolated', action='store_true', help='whether to output attention in encoder')
     parser.add_argument('--guidance_scale', type=float, default=3., help='activation')
     parser.add_argument('--loss', type=str, default='mse', help='activation')
+    parser.add_argument('--model', type=str, default='unet', help='activation')
+    parser.add_argument('--traj_len', type=int, default=650, help='activation')
 
     tmp_args = parser.parse_args()
-    
+    torch.set_num_threads(8)
+        
     print(args)
+    
     # Load configuration
     temp = {}
     for k, v in args.items():
@@ -317,10 +337,15 @@ if __name__ == "__main__":
     config.training.lr = tmp_args.lr
     config.training.loss = tmp_args.loss
     config.data.filter_nopad = tmp_args.filter_nopad
+    config.data.filter_area = tmp_args.filter_area
     config.data.unnormalize = tmp_args.unnormalize
     config.data.interpolated = tmp_args.interpolated
     config.diffusion.num_diffusion_timesteps = tmp_args.n_step
     config.model.guidance_scale = tmp_args.guidance_scale
+    config.model.model = tmp_args.model
+    config.data.traj_length = tmp_args.traj_len
+
+
 
     # root_dir = Path(__name__).resolve().parents[0]
     root_dir = "/home/yichen/DiffTraj/results"
@@ -347,4 +372,12 @@ if __name__ == "__main__":
         colorize=True,
     )
     log_info(config, logger)
-    main_img(config, logger, exp_dir, args)
+    logger.info(args)
+    # if config.data.interpolated:
+    #     config.data.traj_length=650
+    if 'img' in config.model.mode:
+        config.data.traj_length=600
+        main_img(config, logger, exp_dir, args)
+    else:
+        main(config, logger, exp_dir, args)
+

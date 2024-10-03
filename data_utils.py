@@ -98,6 +98,90 @@ class ForeverDataIterator:
     def __len__(self):
         return len(self.data_loader)
 
+def filter_area(trajs, labels, pad_masks):
+    new_list=[]
+    new_list_y=[]
+    lat_min,lat_max = (18.249901, 55.975593)
+    lon_min,lon_max = (-122.3315333, 126.998528)
+    len_traj = trajs.shape[0]
+    # avg_lat_list=[]
+    # avg_lon_list=[]
+    for i in range(len_traj):
+        traj = trajs[i]
+        pad_mask = pad_masks[i]
+        label = labels[i]
+        
+        new_traj = traj[~pad_mask][:,:2]
+        new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+        new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+        avg_lat, avg_lon = np.mean(new_traj, axis=0)
+        
+        # avg_lat_list.append(avg_lat)
+        # avg_lon_list.append(avg_lon)
+        if avg_lat<41 and avg_lat>39:
+            if avg_lon>115 and avg_lon<117:
+                new_list.append(traj)
+                new_list_y.append(label)
+                
+    return np.array(new_list), np.array(new_list_y)
+
+
+def generate_posid(trajs, pad_masks, min_max=[(18.249901, 55.975593),(-122.3315333, 126.998528)]):
+    lat_min,lat_max = min_max[0]
+    lon_min,lon_max = min_max[1]
+    
+    new_list=[]
+    new_list_y=[]
+    len_traj = trajs.shape[0]
+    
+    max_list_lat=[]
+    max_list_lon=[]
+    min_list_lat=[]
+    min_list_lon=[]
+    for i in range(len_traj):
+        traj = trajs[i]
+        pad_mask = pad_masks[i]
+        new_traj = traj[~pad_mask][:,:2]
+        new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+        new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+        tmp_max_lat,tmp_max_lon = np.max(new_traj, axis=0)
+        tmp_min_lat,tmp_min_lon = np.min(new_traj, axis=0)
+        max_list_lat.append(tmp_max_lat)
+        max_list_lon.append(tmp_max_lon)
+        min_list_lat.append(tmp_min_lat)
+        min_list_lon.append(tmp_min_lon)
+    
+    tmp_max_lat = np.max(np.array(max_list_lat))+1e-6
+    tmp_max_lon = np.max(np.array(max_list_lon))+1e-6
+    tmp_min_lat = np.min(np.array(min_list_lat))-1e-6
+    tmp_min_lon = np.min(np.array(min_list_lon))-1e-6
+    print(tmp_max_lat,tmp_max_lon,tmp_min_lat,tmp_min_lon)
+        
+    # tmp_max_lat,tmp_max_lon,tmp_min_lat,tmp_min_lon = 40.8855, 117.2707, 38.44578, 114.93135
+    patchlen_lat = (tmp_max_lat-tmp_min_lat) / 16
+    patchlen_lon = (tmp_max_lon-tmp_min_lon) / 16
+    sid_list=[]
+    eid_list=[]
+    for i in range(len_traj):
+        traj = trajs[i]
+        pad_mask = pad_masks[i]
+        # label = labels[i]
+        
+        new_traj = traj[~pad_mask][:,:2]
+        new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+        new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+        # avg_lat, avg_lon = np.mean(new_traj, axis=0)
+        
+        sid = (new_traj[0,0]-tmp_min_lat)//patchlen_lat*16+(new_traj[0,1]-tmp_min_lon)//patchlen_lon
+        eid = (new_traj[-1,0]-tmp_min_lat)//patchlen_lat*16+(new_traj[-1,1]-tmp_min_lon)//patchlen_lon
+        sid_list.append(sid)
+        eid_list.append(eid)
+        # if sid>=256 or eid>=256:
+        #     pdb.set_trace()
+
+    return np.array(sid_list), np.array(eid_list)
+
+
 def load_data(config):
     batch_sizes = config.training.batch_size
     filename = '/home/yichen/TS2Vec/datafiles/Geolife/traindata_4class_xy_traintest_interpolatedNAN_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_doubletest_0218.pickle'
@@ -125,6 +209,20 @@ def load_data(config):
     pad_mask_source_train_ori = train_x_ori[:,:,2]==0
     train_x_ori[pad_mask_source_train_ori] = 0.
     
+    
+    if config.data.filter_area:
+        print('filtering area')
+        train_x_ori,train_y_ori = filter_area(train_x_ori, train_y_ori, pad_mask_source_train_ori)
+        pad_mask_source_train_ori = train_x_ori[:,:,2]==0
+
+    if config.data.traj_length<train_x_ori.shape[1]:
+        train_x_ori = train_x_ori[:,:config.data.traj_length,:]
+        pad_mask_source_train_ori = pad_mask_source_train_ori[:,:config.data.traj_length]
+
+    if "seid" in config.model.mode:
+        sid,eid = generate_posid(train_x_ori, pad_mask_source_train_ori)
+        se_id = np.stack([sid, eid]).T
+
     if config.data.unnormalize:
         print('unnormalizing data')
         minmax_list = [
@@ -146,6 +244,8 @@ def load_data(config):
         pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
         train_x_ori = train_x_ori[pad_mask_source_incomplete]
         train_y_ori = train_y_ori[pad_mask_source_incomplete]
+        if "seid" in config.model.mode:
+            se_id = se_id[pad_mask_source_incomplete]
         # np.sum(pad_mask_source_incomplete)
         
     class_dict={}
@@ -180,6 +280,10 @@ def load_data(config):
     train_x_mtl_ori[pad_mask_target_train_ori] = 0.
     train_y_mtl_ori = dataset_mtl[2]
     
+    # if "seid" in config.model.mode:
+    #     min_max = []
+    #     sid,eid = generate_posid(train_x_mtl_ori, pad_mask_target_train_ori, min_max=min_max)
+    #     se_id_mtl = np.stack([sid, eid]).T
     
     if config.data.unnormalize:
         minmax_list=[
@@ -229,6 +333,7 @@ def load_data(config):
     # logger.info('Total shape: '+str(train_data.shape))
     print('GeoLife shape: '+str(train_x_ori.shape))
     print('MTL shape: '+str(train_x_mtl_ori.shape))
+
     
     n_geolife = train_x.shape[0]
     n_mtl = train_x_mtl.shape[0]
@@ -252,14 +357,31 @@ def load_data(config):
     train_tgt_iter = ForeverDataIterator(train_loader_target)
     train_loader = (train_source_iter, train_tgt_iter)
     
-    train_dataset_ori = TensorDataset(
-        torch.from_numpy(train_x_ori).to(torch.float),
-        torch.from_numpy(train_y_ori)
-    )
-    train_dataset_mtl_ori = TensorDataset(
-        torch.from_numpy(train_x_mtl_ori).to(torch.float),
-        torch.from_numpy(train_y_mtl_ori)
-    )
+        
+    # if config.data.traj_length<train_x_ori.shape[1]:
+    #     train_x_ori = train_x_ori[:,:config.data.traj_length,:]
+    #     train_x_mtl_ori = train_x_mtl_ori[:,:config.data.traj_length,:]
+        
+    if "seid" in config.model.mode:
+        train_dataset_ori = TensorDataset(
+            torch.from_numpy(train_x_ori).to(torch.float),
+            torch.from_numpy(se_id).to(torch.float),
+            torch.from_numpy(train_y_ori)
+        )
+        train_dataset_mtl_ori = TensorDataset(
+            torch.from_numpy(train_x_mtl_ori).to(torch.float),
+            # torch.from_numpy(se_id_mtl).to(torch.float),
+            torch.from_numpy(train_y_mtl_ori)
+        )
+    else:
+        train_dataset_ori = TensorDataset(
+            torch.from_numpy(train_x_ori).to(torch.float),
+            torch.from_numpy(train_y_ori)
+        )
+        train_dataset_mtl_ori = TensorDataset(
+            torch.from_numpy(train_x_mtl_ori).to(torch.float),
+            torch.from_numpy(train_y_mtl_ori)
+        )
     train_loader_source_ori = DataLoader(train_dataset_ori, batch_size=min(batch_sizes, len(train_dataset_geolife)), num_workers=0, shuffle=True, drop_last=False)
     train_loader_target_ori = DataLoader(train_dataset_mtl_ori, batch_size=min(batch_sizes, len(train_dataset_mtl)), num_workers=0, shuffle=False, drop_last=False)
     # train_loader_target_ori=train_loader_source_ori=None
@@ -270,6 +392,7 @@ def load_data(config):
     )
     test_loader = DataLoader(test_dataset, batch_size=min(batch_sizes, len(test_dataset)))
 
+    train_source_iter=train_tgt_iter=test_loader=train_loader_target=None
     return train_source_iter, train_tgt_iter, test_loader, train_loader_target, train_loader_target_ori, train_loader_source_ori
 
 
@@ -497,6 +620,7 @@ def load_data_img(config):
     
     
     traj_init_filename = '/home/xieyuan/Traj2Image-10.05/datas/cnn_data/traj2image_6class_fixpixel_fixlat3_insert1s_train&test_cnn_0607.pickle'
+    traj_init_filename = '/home/yichen/data/traj2image_6class_fixpixel_fixlat3_insert1s_train&test_cnn_0607.pickle'
     # traj_map13_filename = '/home/xieyuan/Traj2Image-10.05/datas/traj_to_map/traj2image_map_index.pickle'
     # traj_map6_filename = '/home/xieyuan/Traj2Image-10.05/datas/traj_to_map/traj2image_rescale_6class_imgs.pickle'
 
@@ -517,7 +641,9 @@ def load_data_img(config):
     # pdb.set_trace()
     
     imgs_train = []
-    for file_name in glob.glob('/home/xieyuan/Traj2Image-10.05/datas/OpenStreetMap/global_map_tiles_satellite_zoom18_size50_train_size250/*.png', recursive=True):
+    img_dir = "/home/xieyuan/Traj2Image-10.05/datas/OpenStreetMap/global_map_tiles_satellite_zoom18_size50_train_size250/*.png"
+    img_dir = "/home/yichen/data/global_map_tiles_satellite_zoom18_size50_test_size250/*.png"
+    for file_name in glob.glob(img_dir, recursive=True):
         imgs_train.append(file_name)
     print('train:',len(imgs_train))#,'val:',len(tar_imgs_val))
     
