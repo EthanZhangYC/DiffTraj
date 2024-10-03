@@ -18,6 +18,7 @@ from torchvision import transforms
 from PIL import Image
 from torchvision.models import resnet50
 
+
 use_gpu=True
 
 parser = argparse.ArgumentParser(description='MCD for Unsupervised Domain Adaptation')
@@ -205,9 +206,12 @@ lengths=200
 
 # head = np.tile(head,[1,1])
 head = torch.from_numpy(head).float()
-dataloader = DataLoader(head, batch_size=batchsize, shuffle=True, num_workers=4)
+# dataloader = DataLoader(head, batch_size=batchsize, shuffle=True, num_workers=4)
 # _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
-
+x = torch.randn(batchsize, 2, config.data.traj_length)
+if use_gpu:
+    head = head.cuda()
+    x = x.cuda()
 
 
 cnt=0
@@ -229,34 +233,6 @@ skip = n_steps // timesteps
 seq = range(0, n_steps, skip)
 
 
-ckpt_dir = "/home/yichen/DiffTraj/model.pt"
-unet.load_state_dict(torch.load(ckpt_dir), strict=False)
-head = next(iter(dataloader))
-x = torch.randn(batchsize, 2, config.data.traj_length)
-ims = []
-n = batchsize
-seq_next = [-1] + list(seq[:-1])
-for i, j in zip(reversed(seq), reversed(seq_next)):
-    t = (torch.ones(n) * i).long()
-    next_t = (torch.ones(n) * j).long()
-    if use_gpu:
-        t = t.to(x.device)
-        next_t = next_t.to(x.device)
-    with torch.no_grad():
-        # x, noise = q_xt_x0(x0, t)
-        pred_noise = unet(x, t, head)
-        x = p_xt(x, pred_noise, t, next_t, beta, eta)
-        if i % 10 == 0:
-            ims.append(x.cpu().squeeze(0))
-trajs = ims[-1].cpu().numpy()
-trajs = trajs[:,:2,:]
-new_traj = resample_trajectory(trajs[j].T, lengths)
-lat_min,lat_max = (18.249901, 55.975593)
-lon_min,lon_max = (-122.3315333, 126.998528)
-new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
-new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
-Gen_traj.append(new_traj)
-        
         
     
 for model_dir in model_dir_list:
@@ -309,18 +285,18 @@ for model_dir in model_dir_list:
 
     
 
-    head = next(iter(dataloader))
-    # lengths = head[:, 3]
-    # lengths = lengths * len_std + len_mean
-    # lengths = lengths.int()
-    # tes = head[:,:6].numpy()
-    # Gen_head.extend((tes*hstd+hmean))
+    # head = next(iter(dataloader))
+    # # lengths = head[:, 3]
+    # # lengths = lengths * len_std + len_mean
+    # # lengths = lengths.int()
+    # # tes = head[:,:6].numpy()
+    # # Gen_head.extend((tes*hstd+hmean))
     
-    # batch_data = next(iter(train_loader_target_ori))
-    # x0 = batch_data[0][:,:,:2]#.cuda() 
-    # x0 = x0.permute(0,2,1)
-    # # # Start with random noise
-    x = torch.randn(batchsize, 2, config.data.traj_length)
+    # # batch_data = next(iter(train_loader_target_ori))
+    # # x0 = batch_data[0][:,:,:2]#.cuda() 
+    # # x0 = x0.permute(0,2,1)
+    # # # # Start with random noise
+    # x = torch.randn(batchsize, 2, config.data.traj_length)
     
 
     
@@ -396,3 +372,51 @@ plt.savefig(filename)
 # print(new_traj)
 plt.show()
 
+
+
+
+
+
+
+
+
+
+
+# filename='mtl_traj_ori.png'
+# ckpt_dir = "/home/yichen/DiffTraj/model.pt"
+# unet.load_state_dict(torch.load(ckpt_dir), strict=False)
+# # head = next(iter(dataloader))
+# head1 = np.array([[2.0000e+00, 6.2662e-02, 1.4033e-01, 1.0000e+00, 3.1331e-04, 1.5628e-01, 1.2100e+02, 1.2100e+02],[ 0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+# head1 = torch.from_numpy(head1).float().cuda()
+# ims = []
+# n = batchsize
+# seq_next = [-1] + list(seq[:-1])
+# for i, j in zip(reversed(seq), reversed(seq_next)):
+#     t = (torch.ones(n) * i).long()
+#     next_t = (torch.ones(n) * j).long()
+#     if use_gpu:
+#         t = t.to(x.device)
+#         next_t = next_t.to(x.device)
+#     with torch.no_grad():
+#         # x, noise = q_xt_x0(x0, t)
+#         pred_noise = unet(x, t, head1)
+#         x = p_xt(x, pred_noise, t, next_t, beta, eta)
+#         if i % 10 == 0:
+#             ims.append(x.cpu().squeeze(0))
+# trajs = ims[-1].cpu().numpy()
+# trajs = trajs[:,:2,:]
+# new_traj = resample_trajectory(trajs[0].T, lengths)
+# lat_min,lat_max = (18.249901, 55.975593)
+# lon_min,lon_max = (-122.3315333, 126.998528)
+# new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+# new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+# Gen_traj.append(new_traj)
+
+# fig = plt.figure(figsize=(12,8))
+# for i in range(len(Gen_traj)):
+#     traj=Gen_traj[i]
+#     ax1 = fig.add_subplot(331+i)  
+#     ax1.plot(traj[:,0],traj[:,1],color='blue',alpha=0.1)
+# plt.tight_layout()
+# plt.savefig(filename)
+# plt.show()     

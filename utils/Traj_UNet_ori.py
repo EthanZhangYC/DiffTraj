@@ -33,128 +33,8 @@ class Attention(nn.Module):
         return weights
 
 
-class WideAndDeep1(nn.Module):
-    def __init__(self, embedding_dim=128, hidden_dim=256, mode='label_only'):
-        super(WideAndDeep, self).__init__()
-
-        self.mode = mode
-        # Wide part (linear model for continuous attributes)
-        if self.mode == 'label_avgmax_vajb':
-            self.wide_fc = nn.Linear(8, embedding_dim)
-        elif self.mode == 'label_avg_vajb' or self.mode == 'label_max_vajb' or self.mode == 'label_oridiff' or self.mode == 'label_oridiff_img' :
-            self.wide_fc = nn.Linear(4, embedding_dim)
-        elif self.mode == 'label_oridiff_normlentime' or self.mode == 'oridiff_normlentime_seid' or self.mode == 'label_oridiff_normlentime_seid':
-            self.wide_fc = nn.Linear(5, embedding_dim)
-        else:
-            raise NotImplementedError
-
-        # # Deep part (neural network for categorical attributes)
-        # self.depature_embedding = nn.Embedding(288, hidden_dim)
-        self.sid_embedding = nn.Embedding(257, hidden_dim)
-        self.eid_embedding = nn.Embedding(257, hidden_dim)
-        self.label_embedding = nn.Embedding(4, hidden_dim)
-        
-        if self.mode == 'label_oridiff_normlentime_seid':
-            self.deep_fc1 = nn.Linear(hidden_dim*3, embedding_dim)
-        elif self.mode == 'oridiff_normlentime_seid':
-            self.deep_fc1 = nn.Linear(hidden_dim*2, embedding_dim)
-        else:
-            self.deep_fc1 = nn.Linear(hidden_dim, embedding_dim)
-        self.deep_fc2 = nn.Linear(embedding_dim, embedding_dim)
-        
-        
-
-    def forward(self, attr):
-        # # Continuous attributes
-        # continuous_attrs = attr[:, 1:6]
-
-        # Categorical attributes
-        # depature, sid, eid = attr[:, 0].long(
-        # ), attr[:, 6].long(), attr[:, 7].long()
-
-        # # Wide part
-        # wide_out = self.wide_fc(continuous_attrs)
-
-        # # Deep part
-        # depature_embed = self.depature_embedding(depature)
-        # sid_embed = self.sid_embedding(sid)
-        # eid_embed = self.eid_embedding(eid)
-        # categorical_embed = torch.cat(
-        #     (depature_embed, sid_embed, eid_embed), dim=1)
-        # deep_out = F.relu(self.deep_fc1(categorical_embed))
-        # deep_out = self.deep_fc2(deep_out)
-        # # Combine wide and deep embeddings
-        # combined_embed = wide_out + deep_out
-        
-        if self.mode == 'label_only':
-            label = attr[:,-1].long()
-            categorical_embed = label_embed = self.label_embedding(label)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = deep_out
-        elif self.mode == 'label_avgmax_vajb':
-            continuous_attrs = attr[:, :-1]
-            wide_out = self.wide_fc(continuous_attrs)
-            label = attr[:,-1].long()
-            categorical_embed = label_embed = self.label_embedding(label)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        elif self.mode == 'label_avg_vajb':
-            continuous_attrs = attr[:, :4]
-            wide_out = self.wide_fc(continuous_attrs)
-            label = attr[:,-1].long()
-            categorical_embed = label_embed = self.label_embedding(label)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        elif self.mode == 'label_max_vajb':
-            continuous_attrs = attr[:, 4:8]
-            wide_out = self.wide_fc(continuous_attrs)
-            label = attr[:,-1].long()
-            categorical_embed = label_embed = self.label_embedding(label)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        elif self.mode == 'label_oridiff' or self.mode == 'label_oridiff_img' or self.mode == 'label_oridiff_normlentime':
-            continuous_attrs = attr[:, :-1]
-            wide_out = self.wide_fc(continuous_attrs)
-            label = attr[:,-1].long()
-            categorical_embed = label_embed = self.label_embedding(label)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        elif self.mode == 'label_oridiff_normlentime_seid':
-            continuous_attrs = attr[:, :5]
-            wide_out = self.wide_fc(continuous_attrs)
-            
-            sid,eid,label = attr[:, -3].long(), attr[:, -2].long(),attr[:,-1].long()
-            sid_embed = self.sid_embedding(sid)
-            eid_embed = self.eid_embedding(eid)
-            label_embed = self.label_embedding(label)
-            categorical_embed = torch.cat((sid_embed, eid_embed, label_embed), dim=1)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        elif self.mode == 'oridiff_normlentime_seid':
-            continuous_attrs = attr[:, :5]
-            wide_out = self.wide_fc(continuous_attrs)
-            
-            sid, eid = attr[:, -2].long(), attr[:, -1].long()
-            sid_embed = self.sid_embedding(sid)
-            eid_embed = self.eid_embedding(eid)
-            categorical_embed = torch.cat((sid_embed, eid_embed), dim=1)
-            deep_out = F.relu(self.deep_fc1(categorical_embed))
-            deep_out = self.deep_fc2(deep_out)
-            combined_embed = wide_out + deep_out
-        else:
-            raise NotImplementedError
-        
-        return combined_embed
-    
-
 class WideAndDeep(nn.Module):
-    def __init__(self, embedding_dim=128, hidden_dim=256, mode=''):
+    def __init__(self, embedding_dim=128, hidden_dim=256):
         super(WideAndDeep, self).__init__()
 
         # Wide part (linear model for continuous attributes)
@@ -190,9 +70,8 @@ class WideAndDeep(nn.Module):
         combined_embed = wide_out + deep_out
 
         return combined_embed
-    
-    
-    
+
+
 def nonlinearity(x):
     # swish
     return x * torch.sigmoid(x)
@@ -466,7 +345,7 @@ class Model(nn.Module):
                                         stride=1,
                                         padding=1)
 
-    def forward(self, x, t, extra_embed=None, img_feat=None):
+    def forward(self, x, t, extra_embed=None):
         assert x.shape[2] == self.resolution
 
         # timestep embedding
@@ -476,8 +355,6 @@ class Model(nn.Module):
         temb = self.temb.dense[1](temb)
         if extra_embed is not None:
             temb = temb + extra_embed
-        if img_feat is not None:
-            temb = temb + img_feat
 
         # downsampling
         hs = [self.conv_in(x)]
@@ -522,20 +399,6 @@ class Model(nn.Module):
         return h
 
 
-class DimConverter(nn.Module):
-    def __init__(self, input_dim=64, out_dim=64):
-        super(DimConverter, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, out_dim),
-            # # nn.ReLU(),
-            # nn.Linear(out_dim, out_dim),
-            # # nn.ReLU()
-        )
-    def forward(self, x): 
-        x = self.fc(x)
-        return x
-    
-    
 class Guide_UNet(nn.Module):
     def __init__(self, config):
         super(Guide_UNet, self).__init__()
@@ -546,45 +409,17 @@ class Guide_UNet(nn.Module):
         self.unet = Model(config)
         # self.guide_emb = Guide_Embedding(self.attr_dim, self.ch)
         # self.place_emb = Place_Embedding(self.attr_dim, self.ch)
-        self.guide_emb = WideAndDeep(self.ch, mode=config.model.mode)
-        self.place_emb = WideAndDeep(self.ch, mode=config.model.mode)
-        self.dim_converter = DimConverter(input_dim=1000, out_dim=self.ch)
+        self.guide_emb = WideAndDeep(self.ch)
+        self.place_emb = WideAndDeep(self.ch)
 
-    def forward(self, x, t, attr, img_feat=None):
+    def forward(self, x, t, attr):
         guide_emb = self.guide_emb(attr)
         place_vector = torch.zeros(attr.shape, device=attr.device)
         place_emb = self.place_emb(place_vector)
-        if img_feat is not None:
-            img_feat = self.dim_converter(img_feat)
-        cond_noise = self.unet(x, t, guide_emb, img_feat)
-        uncond_noise = self.unet(x, t, place_emb, None)
+        cond_noise = self.unet(x, t, guide_emb)
+        uncond_noise = self.unet(x, t, place_emb)
         pred_noise = cond_noise + self.guidance_scale * (cond_noise -
                                                          uncond_noise)
-        return pred_noise
-    
-class Guide_UNet_nocond(nn.Module):
-    def __init__(self, config):
-        super(Guide_UNet_nocond, self).__init__()
-        self.config = config
-        self.ch = config.model.ch * 4
-        self.attr_dim = config.model.attr_dim
-        self.guidance_scale = config.model.guidance_scale
-        self.unet = Model(config)
-        # self.guide_emb = Guide_Embedding(self.attr_dim, self.ch)
-        # self.place_emb = Place_Embedding(self.attr_dim, self.ch)
-        self.guide_emb = WideAndDeep(self.ch, mode=config.model.mode)
-        self.place_emb = WideAndDeep(self.ch, mode=config.model.mode)
-        self.dim_converter = DimConverter(input_dim=1000, out_dim=self.ch)
-
-    def forward(self, x, t, attr, img_feat=None):
-        # guide_emb = self.guide_emb(attr)
-        place_vector = torch.zeros(attr.shape, device=attr.device)
-        place_emb = self.place_emb(place_vector)
-        # if img_feat is not None:
-        #     img_feat = self.dim_converter(img_feat)
-        # cond_noise = self.unet(x, t, guide_emb, img_feat)
-        uncond_noise = self.unet(x, t, place_emb, None)
-        pred_noise = uncond_noise
         return pred_noise
 
 
