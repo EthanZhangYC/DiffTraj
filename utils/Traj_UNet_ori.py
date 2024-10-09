@@ -418,8 +418,8 @@ class Guide_UNet(nn.Module):
         place_emb = self.place_emb(place_vector)
         cond_noise = self.unet(x, t, guide_emb)
         uncond_noise = self.unet(x, t, place_emb)
-        pred_noise = cond_noise + self.guidance_scale * (cond_noise -
-                                                         uncond_noise)
+        pred_noise = cond_noise + self.guidance_scale * (cond_noise - uncond_noise)
+        # pred_noise = uncond_noise
         return pred_noise
 
 

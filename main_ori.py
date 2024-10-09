@@ -228,7 +228,7 @@ def load_data(config):
     # if config.data.interpolated:
     train_x_ori = dataset[1].squeeze(1)[:,:,2:]
     # else:
-    #     train_x_ori = dataset[0].squeeze(1)[:,:,2:]
+    # train_x_ori = dataset[0].squeeze(1)[:,:,2:]
     train_y_ori = dataset[3]
     pad_mask_source_train_ori = train_x_ori[:,:,2]==0
     train_x_ori[pad_mask_source_train_ori] = 0.
@@ -246,6 +246,12 @@ def load_data(config):
     # if "seid" in config.model.mode:
     sid,eid = generate_posid(train_x_ori, pad_mask_source_train_ori)
     se_id = np.stack([sid, eid]).T
+    
+    print('filtering nopadding segments')
+    pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
+    train_x_ori = train_x_ori[pad_mask_source_incomplete]
+    train_y_ori = train_y_ori[pad_mask_source_incomplete]
+    se_id = se_id[pad_mask_source_incomplete]
         
     class_dict={}
     for y in train_y:
@@ -268,13 +274,11 @@ def load_data(config):
     train_y_mtl = dataset_mtl[2]
     test_y = dataset_mtl[5]
 
-        
-    # # train_x_mtl_ori = train_x_mtl[:,:,2:] 
-    # # train_x_mtl_ori[pad_mask_target_train] = 0.
+
     # if config.data.interpolated:
     train_x_mtl_ori = dataset_mtl[1].squeeze(1)[:,:,2:]
     # else:
-    #     train_x_mtl_ori = dataset_mtl[0].squeeze(1)[:,:,2:]
+    # train_x_mtl_ori = dataset_mtl[0].squeeze(1)[:,:,2:]
     pad_mask_target_train_ori = train_x_mtl_ori[:,:,2]==0
     train_x_mtl_ori[pad_mask_target_train_ori] = 0.
     train_y_mtl_ori = dataset_mtl[2]
@@ -439,6 +443,34 @@ def main(config, logger, exp_dir):
         for _, batch_data in enumerate(dataloader):
             x0 = batch_data[0][:,:,:2].cuda() 
             x0 = x0.permute(0,2,1)
+            
+            
+            # pdb.set_trace()
+            # Gen_traj=[]
+            # all_pad_mask = batch_data[0][:,:,2]!=0
+            # for i in range(9):
+            #     pad_mask = all_pad_mask[i]
+            #     new_traj = batch_data[0][i,:,:2][pad_mask]
+            #     lat_min,lat_max = (18.249901, 55.975593)
+            #     lon_min,lon_max = (-122.3315333, 126.998528)
+            #     new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+            #     new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+            #     Gen_traj.append(new_traj)
+            #     print(i)
+            #     print(new_traj)
+            #     print('---------')
+            # fig = plt.figure(figsize=(12,12))
+            # filename = '1008_test.png'
+            # for i in range(len(Gen_traj)):
+            #     traj=Gen_traj[i]
+            #     ax1 = fig.add_subplot(331+i)  
+            #     ax1.plot(traj[:,0],traj[:,1],color='blue',alpha=0.1)
+            # plt.tight_layout()
+            # plt.savefig(filename)
+            # plt.show()
+            # exit()
+            
+    
             label = batch_data[-1].unsqueeze(1)
             
             sid = batch_data[1][:,0].unsqueeze(1)
@@ -454,8 +486,7 @@ def main(config, logger, exp_dir):
             
             trip_len = trip_len / config.data.traj_length
             total_time = total_time / 3000.
-            head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid, label],dim=1).cuda()
-
+            head = torch.cat([label, total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1).cuda()
 
             t = torch.randint(low=0, high=n_steps,
                               size=(len(x0) // 2 + 1, )).cuda()
@@ -473,7 +504,8 @@ def main(config, logger, exp_dir):
             optim.step()
             if config.model.ema:
                 ema_helper.update(unet)
-        if (epoch) % 50 == 0:
+                
+        if (epoch) % 1000 == 0:
             m_path = model_save + f"/unet_{epoch}.pt"
             torch.save(unet.state_dict(), m_path)
             m_path = exp_dir + '/results/' + f"loss_{epoch}.npy"

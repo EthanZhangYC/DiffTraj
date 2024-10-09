@@ -198,7 +198,7 @@ model_dir_list=[
     "/home/yichen/DiffTraj/results/DiffTraj/1002_label_oridiff_normlentime_seid_epoch1000_bs512_shuffle_filterarea_nointerlen200/models/10-02-23-28-49/unet_500.pt",
     "/home/yichen/DiffTraj/results/DiffTraj/1002_label_oridiff_normlentime_seid_epoch1000_bs512_shuffle_filterarea_nointerlen200/models/10-02-23-28-49/unet_1000.pt",
 ] 
-filename='mtl_traj_normlentime_seid_len200.png'
+filename='1004_mtl_traj_normlentime_seid_len200.png'
 head = np.array([[6.2662e-02, 1.4033e-01, 1.0000e+00, 3.1331e-04, 1.5628e-01, 1.2100e+02, 1.2100e+02, 2.0000e+00],[8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02, 0.0000e+00]])
 lengths=200
 
@@ -208,10 +208,10 @@ lengths=200
 head = torch.from_numpy(head).float()
 # dataloader = DataLoader(head, batch_size=batchsize, shuffle=True, num_workers=4)
 # _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
-x = torch.randn(batchsize, 2, config.data.traj_length)
+x0 = torch.randn(batchsize, 2, config.data.traj_length)
 if use_gpu:
     head = head.cuda()
-    x = x.cuda()
+    x0 = x0.cuda()
 
 
 cnt=0
@@ -309,9 +309,6 @@ for model_dir in model_dir_list:
     else:
         img_feat=None
     
-    if use_gpu:
-        head = head.cuda()
-        x = x.cuda()
     ims = []
     # n = x.size(0)
     n = batchsize
@@ -320,12 +317,12 @@ for model_dir in model_dir_list:
         t = (torch.ones(n) * i).long()
         next_t = (torch.ones(n) * j).long()
         if use_gpu:
-            t = t.to(x.device)
-            next_t = next_t.to(x.device)
+            t = t.to(x0.device)
+            next_t = next_t.to(x0.device)
         with torch.no_grad():
             # x, noise = q_xt_x0(x0, t)
-            pred_noise = unet(x, t, head, img_feat)
-            x = p_xt(x, pred_noise, t, next_t, beta, eta)
+            pred_noise = unet(x0, t, head, img_feat)
+            x = p_xt(x0, pred_noise, t, next_t, beta, eta)
             if i % 10 == 0:
                 ims.append(x.cpu().squeeze(0))
     trajs = ims[-1].cpu().numpy()
@@ -333,21 +330,18 @@ for model_dir in model_dir_list:
     
     # resample the trajectory length
     # for j in range(batchsize):
-    for j in range(1):
-        new_traj = resample_trajectory(trajs[j].T, lengths)
-        # new_traj = resample_trajectory(trajs[j].T, lengths[j])
-        # new_traj = new_traj * std + mean
-        
-        # lat_min,lat_max = (45.230416, 45.9997262293)
-        # lon_min,lon_max = (-74.31479102, -72.81248199999999)
-        lat_min,lat_max = (18.249901, 55.975593)
-        lon_min,lon_max = (-122.3315333, 126.998528)
-        
-        # print(new_traj)
-        
-        new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
-        new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
-        Gen_traj.append(new_traj)
+    # for j in range(1):
+    new_traj = resample_trajectory(trajs[0].T, lengths)
+    # new_traj = resample_trajectory(trajs[j].T, lengths[j])
+    # new_traj = new_traj * std + mean
+    
+    # lat_min,lat_max = (45.230416, 45.9997262293)
+    # lon_min,lon_max = (-74.31479102, -72.81248199999999)
+    lat_min,lat_max = (18.249901, 55.975593)
+    lon_min,lon_max = (-122.3315333, 126.998528)
+    new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
+    new_traj[:,1] = new_traj[:,1] * (lon_max-lon_min) + lon_min
+    Gen_traj.append(new_traj)
 
 
 

@@ -36,10 +36,19 @@ python main.py \
 --job_name 1003_label_oridiff_normlentime_seid_epoch1000_bs512_shuffle_filterarea_interlen200_lr1e5
 
 
-CUDA_VISIBLE_DEVICES=7 \
-python main_ori.py \
---job_name 1004_ori_filterarea_interlen300
 
+
+CUDA_VISIBLE_DEVICES=3 \
+python main_ori.py \
+--job_name 1009_ori_filterarea_filterpad_epoch4w
+
+CUDA_VISIBLE_DEVICES=5 \
+python main_ori.py \
+--job_name 1009_ori_filterarea_filterpad_epoch4w_normlabel
+
+
+CUDA_VISIBLE_DEVICES=4 \
+python traj_generate_ori.py 
 
 
 
