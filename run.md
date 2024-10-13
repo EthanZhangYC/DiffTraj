@@ -51,23 +51,56 @@ CUDA_VISIBLE_DEVICES=4 \
 python traj_generate_ori.py 
 
 
-
-
-
-
-
-
-
-
-CUDA_LAUNCH_BLOCKING=1 \
+CUDA_VISIBLE_DEVICES=0 \
+python main.py \
+--mode label_oridiff_normlentime_seid_img \
+--epoch 40000 \
+--batch_size 1024 \
+--filter_area \
+--filter_nopad \
+--interpolated \
+--traj_len 200 \
+--job_name 1009_label_oridiff_normlentime_seid_epoch4w_shuffle_filterarea_filterpad_interlen200
 
 CUDA_VISIBLE_DEVICES=4 \
 python main.py \
 --mode label_oridiff_normlentime_seid \
---epoch 200 \
+--epoch 40000 \
+--batch_size 10 \
+--filter_area \
+--traj_len 200 \
+--filter_nopad \
+--interpolated \
+--resume /home/yichen/DiffTraj/model.pt \
+--job_name test
+
+
+
+
+
+
+
+
+--lr 5e-5 \
+--n_step 2000 \
+--epoch 500 \
+--batch_size 512 \
+--filter_nopad \
+--unnormalize \
+--guidance_scale 0 \
+--loss rmse \
+--filter_area \
+--model unet_nocond \
+CUDA_LAUNCH_BLOCKING=1 \
+
+CUDA_VISIBLE_DEVICES=4 \
+python main.py \
+--mode label_oridiff_normlentime_seid_img \
+--epoch 40000 \
 --lr 5e-5 \
 --batch_size 16 \
 --filter_area \
+--filter_nopad \
 --interpolated \
 --traj_len 200 \
 --job_name test

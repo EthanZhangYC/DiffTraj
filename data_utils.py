@@ -98,9 +98,10 @@ class ForeverDataIterator:
     def __len__(self):
         return len(self.data_loader)
 
-def filter_area(trajs, labels, pad_masks):
+def filter_area(trajs, labels, imgs, pad_masks):
     new_list=[]
     new_list_y=[]
+    new_list_imgs=[]
     lat_min,lat_max = (18.249901, 55.975593)
     lon_min,lon_max = (-122.3315333, 126.998528)
     len_traj = trajs.shape[0]
@@ -110,6 +111,8 @@ def filter_area(trajs, labels, pad_masks):
         traj = trajs[i]
         pad_mask = pad_masks[i]
         label = labels[i]
+        if imgs is not None:
+            img = imgs[i]
         
         new_traj = traj[~pad_mask][:,:2]
         new_traj[:,0] = new_traj[:,0] * (lat_max-lat_min) + lat_min
@@ -122,8 +125,13 @@ def filter_area(trajs, labels, pad_masks):
             if avg_lon>115 and avg_lon<117:
                 new_list.append(traj)
                 new_list_y.append(label)
+                if imgs is not None:
+                    new_list_imgs.append(img)
                 
-    return np.array(new_list), np.array(new_list_y)
+    if imgs is not None:
+        return np.array(new_list), np.array(new_list_y), np.array(new_list_imgs)
+    else:
+        return np.array(new_list), np.array(new_list_y), None
 
 
 def generate_posid(trajs, pad_masks, min_max=[(18.249901, 55.975593),(-122.3315333, 126.998528)]):
@@ -182,7 +190,7 @@ def generate_posid(trajs, pad_masks, min_max=[(18.249901, 55.975593),(-122.33153
     return np.array(sid_list), np.array(eid_list)
 
 
-def load_data(config):
+def load_data_old(config):
     batch_sizes = config.training.batch_size
     filename = '/home/yichen/TS2Vec/datafiles/Geolife/traindata_4class_xy_traintest_interpolatedNAN_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_doubletest_0218.pickle'
     with open(filename, 'rb') as f:
@@ -357,7 +365,6 @@ def load_data(config):
     train_tgt_iter = ForeverDataIterator(train_loader_target)
     train_loader = (train_source_iter, train_tgt_iter)
     
-        
     # if config.data.traj_length<train_x_ori.shape[1]:
     #     train_x_ori = train_x_ori[:,:config.data.traj_length,:]
     #     train_x_mtl_ori = train_x_mtl_ori[:,:config.data.traj_length,:]
@@ -396,33 +403,17 @@ def load_data(config):
     return train_source_iter, train_tgt_iter, test_loader, train_loader_target, train_loader_target_ori, train_loader_source_ori
 
 
-input_size = 224
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-transform_standard = {
-    'train': transforms.Compose([
-        transforms.Resize(input_size),
-        transforms.RandomCrop(input_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        normalize
-    ]),
-    'val': transforms.Compose([
-        transforms.Resize(input_size),
-        transforms.CenterCrop(input_size),
-        transforms.ToTensor(),
-        normalize
-    ])
-}
 
 
 class create_single_dataset(torch.utils.data.Dataset):
-    def __init__(self, imgs, trajs, part, transform):
+    def __init__(self, imgs, trajs, labels, seids, part, transform):
         super(create_single_dataset, self).__init__()
         self.imgs = imgs
         self.trajs = trajs
+        self.labels = labels
+        self.seids = seids
         self.default_idx = range(len(imgs))
-        self.label_dict={'0':0,'1':0,'2':1,'3':1,'4':1}
+        # self.label_dict={'0':0,'1':0,'2':1,'3':1,'4':1}
         self.transform = transform
         # self.dataset = dataset
         # if part=='train':                     
@@ -434,189 +425,195 @@ class create_single_dataset(torch.utils.data.Dataset):
         if self.transform is not None:
             img = self.transform(img)
             
-        traj,label = self.trajs[self.default_idx[index]]
-        if len(traj) < 600:
-            extra = [[0 for j in range(len(traj[0]))] for i in range(600 - len(traj))]
-            traj = traj + extra
-        traj = np.array(traj)
+        # traj,label = self.trajs[self.default_idx[index]]
+        traj = np.array(self.trajs[self.default_idx[index]])#.astype(float)
+        label = self.labels[self.default_idx[index]]
+        if self.seids is not None:
+            seid = self.seids[self.default_idx[index]]
+        else:
+            seid = None
+        # if len(traj) < 600:
+        #     extra = [[0 for j in range(len(traj[0]))] for i in range(600 - len(traj))]
+        #     traj = traj + extra
+        # traj = np.array(traj)
 
         # label = self.label_dict[img_dir.split('/')[-2]]
-        return traj, img, label, img_dir
+        return traj, img, seid, label 
         
     def __len__(self):
         return len(self.imgs)
     
-def load_data_img(config):
-    batch_sizes = config.training.batch_size
-    filename = '/home/yichen/TS2Vec/datafiles/Geolife/traindata_4class_xy_traintest_interpolatedNAN_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_doubletest_0218.pickle'
-    with open(filename, 'rb') as f:
-        kfold_dataset, X_unlabeled = pickle.load(f)
-    dataset = kfold_dataset
+def load_data_img_old(config):
+    # batch_sizes = config.training.batch_size
+    # filename = '/home/yichen/TS2Vec/datafiles/Geolife/traindata_4class_xy_traintest_interpolatedNAN_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_doubletest_0218.pickle'
+    # with open(filename, 'rb') as f:
+    #     kfold_dataset, X_unlabeled = pickle.load(f)
+    # dataset = kfold_dataset
     
-    # test_x_geolife = dataset[5].squeeze(1)
-    # test_y_geolife = dataset[7]
-    # test_x_geolife = test_x_geolife[:,:,4:]   
-    # pad_mask_source_test = test_x_geolife[:,:,0]==0
-    # test_x_geolife[pad_mask_source_test] = 0.
+    # # test_x_geolife = dataset[5].squeeze(1)
+    # # test_y_geolife = dataset[7]
+    # # test_x_geolife = test_x_geolife[:,:,4:]   
+    # # pad_mask_source_test = test_x_geolife[:,:,0]==0
+    # # test_x_geolife[pad_mask_source_test] = 0.
     
-    train_x = dataset[1].squeeze(1)
-    train_y = dataset[3]
-    train_x = train_x[:,:,4:]   
-    pad_mask_source = train_x[:,:,0]==0
-    train_x[pad_mask_source] = 0.
+    # train_x = dataset[1].squeeze(1)
+    # train_y = dataset[3]
+    # train_x = train_x[:,:,4:]   
+    # pad_mask_source = train_x[:,:,0]==0
+    # train_x[pad_mask_source] = 0.
     
-    if config.data.interpolated:
-        train_x_ori = dataset[1].squeeze(1)[:,:,2:]
-    else:
-        train_x_ori = dataset[0].squeeze(1)[:,:,2:]
-    train_y_ori = dataset[3]
-    pad_mask_source_train_ori = train_x_ori[:,:,2]==0
-    train_x_ori[pad_mask_source_train_ori] = 0.
+    # if config.data.interpolated:
+    #     train_x_ori = dataset[1].squeeze(1)[:,:,2:]
+    # else:
+    #     train_x_ori = dataset[0].squeeze(1)[:,:,2:]
+    # train_y_ori = dataset[3]
+    # pad_mask_source_train_ori = train_x_ori[:,:,2]==0
+    # train_x_ori[pad_mask_source_train_ori] = 0.
     
-    if config.data.unnormalize:
-        print('unnormalizing data')
-        minmax_list = [
-            (18.249901, 55.975593), (-122.3315333, 126.998528), \
-            (0.9999933186918497, 1198.999998648651),
-            (0.0, 50118.17550774085),
-            (0.0, 49.95356703911097),
-            (-9.99348698095659, 9.958323482935628),
-            (-39.64566646191948, 1433.3438889109589),
-            (0.0, 359.95536847383516)
-        ]
-        for i in range(7):
-            if i==2:
-                continue
-            train_x_ori[:,:,i] = train_x_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
+    # if config.data.unnormalize:
+    #     print('unnormalizing data')
+    #     minmax_list = [
+    #         (18.249901, 55.975593), (-122.3315333, 126.998528), \
+    #         (0.9999933186918497, 1198.999998648651),
+    #         (0.0, 50118.17550774085),
+    #         (0.0, 49.95356703911097),
+    #         (-9.99348698095659, 9.958323482935628),
+    #         (-39.64566646191948, 1433.3438889109589),
+    #         (0.0, 359.95536847383516)
+    #     ]
+    #     for i in range(7):
+    #         if i==2:
+    #             continue
+    #         train_x_ori[:,:,i] = train_x_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
     
-    if config.data.filter_nopad:
-        print('filtering nopadding segments')
-        pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
-        train_x_ori = train_x_ori[pad_mask_source_incomplete]
-        train_y_ori = train_y_ori[pad_mask_source_incomplete]
-        # np.sum(pad_mask_source_incomplete)
+    # if config.data.filter_nopad:
+    #     print('filtering nopadding segments')
+    #     pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
+    #     train_x_ori = train_x_ori[pad_mask_source_incomplete]
+    #     train_y_ori = train_y_ori[pad_mask_source_incomplete]
+    #     # np.sum(pad_mask_source_incomplete)
         
-    class_dict={}
-    for y in train_y:
-        if y not in class_dict:
-            class_dict[y]=1
-        else:
-            class_dict[y]+=1
-    print('Geolife:',dict(sorted(class_dict.items())))
+    # class_dict={}
+    # for y in train_y:
+    #     if y not in class_dict:
+    #         class_dict[y]=1
+    #     else:
+    #         class_dict[y]+=1
+    # print('Geolife:',dict(sorted(class_dict.items())))
 
 
 
-    filename_mtl = '/home/yichen/TS2Vec/datafiles/MTL/traindata_4class_xy_traintest_interpolatedLinear_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_0817_sharedminmax_balanced.pickle'
-    print(filename_mtl)
-    with open(filename_mtl, 'rb') as f:
-        kfold_dataset, X_unlabeled_mtl = pickle.load(f)
-    dataset_mtl = kfold_dataset
+    # filename_mtl = '/home/yichen/TS2Vec/datafiles/MTL/traindata_4class_xy_traintest_interpolatedLinear_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_0817_sharedminmax_balanced.pickle'
+    # print(filename_mtl)
+    # with open(filename_mtl, 'rb') as f:
+    #     kfold_dataset, X_unlabeled_mtl = pickle.load(f)
+    # dataset_mtl = kfold_dataset
     
-    train_x_mtl = dataset_mtl[1].squeeze(1)
-    test_x = dataset_mtl[4].squeeze(1)
-    train_y_mtl = dataset_mtl[2]
-    test_y = dataset_mtl[5]
+    # train_x_mtl = dataset_mtl[1].squeeze(1)
+    # test_x = dataset_mtl[4].squeeze(1)
+    # train_y_mtl = dataset_mtl[2]
+    # test_y = dataset_mtl[5]
 
         
-    # train_x_mtl_ori = train_x_mtl[:,:,2:] 
-    # train_x_mtl_ori[pad_mask_target_train] = 0.
-    if config.data.interpolated:
-        train_x_mtl_ori = dataset_mtl[1].squeeze(1)[:,:,2:]
-    else:
-        train_x_mtl_ori = dataset_mtl[0].squeeze(1)[:,:,2:]
-    pad_mask_target_train_ori = train_x_mtl_ori[:,:,2]==0
-    train_x_mtl_ori[pad_mask_target_train_ori] = 0.
-    train_y_mtl_ori = dataset_mtl[2]
+    # # train_x_mtl_ori = train_x_mtl[:,:,2:] 
+    # # train_x_mtl_ori[pad_mask_target_train] = 0.
+    # if config.data.interpolated:
+    #     train_x_mtl_ori = dataset_mtl[1].squeeze(1)[:,:,2:]
+    # else:
+    #     train_x_mtl_ori = dataset_mtl[0].squeeze(1)[:,:,2:]
+    # pad_mask_target_train_ori = train_x_mtl_ori[:,:,2]==0
+    # train_x_mtl_ori[pad_mask_target_train_ori] = 0.
+    # train_y_mtl_ori = dataset_mtl[2]
     
     
-    if config.data.unnormalize:
-        minmax_list=[
-            (45.230416, 45.9997262293), (-74.31479102, -72.81248199999999),  \
-            (0.9999933186918497, 1198.999998648651), # time
-            (0.0, 50118.17550774085), # dist
-            (0.0, 49.95356703911097), # speed
-            (-9.99348698095659, 9.958323482935628), #acc
-            (-39.64566646191948, 1433.3438889109589), #jerk
-            (0.0, 359.95536847383516) #bearing
-        ] 
-        for i in range(7):
-            if i==2:
-                continue
-            train_x_mtl_ori[:,:,i] = train_x_mtl_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
+    # if config.data.unnormalize:
+    #     minmax_list=[
+    #         (45.230416, 45.9997262293), (-74.31479102, -72.81248199999999),  \
+    #         (0.9999933186918497, 1198.999998648651), # time
+    #         (0.0, 50118.17550774085), # dist
+    #         (0.0, 49.95356703911097), # speed
+    #         (-9.99348698095659, 9.958323482935628), #acc
+    #         (-39.64566646191948, 1433.3438889109589), #jerk
+    #         (0.0, 359.95536847383516) #bearing
+    #     ] 
+    #     for i in range(7):
+    #         if i==2:
+    #             continue
+    #         train_x_mtl_ori[:,:,i] = train_x_mtl_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
     
-    if config.data.filter_nopad:
-        pad_mask_target_incomplete = np.sum(pad_mask_target_train_ori,axis=1) == 0
-        train_x_mtl_ori = train_x_mtl_ori[pad_mask_target_incomplete]
-        train_y_mtl_ori = train_y_mtl_ori[pad_mask_target_incomplete]
+    # if config.data.filter_nopad:
+    #     pad_mask_target_incomplete = np.sum(pad_mask_target_train_ori,axis=1) == 0
+    #     train_x_mtl_ori = train_x_mtl_ori[pad_mask_target_incomplete]
+    #     train_y_mtl_ori = train_y_mtl_ori[pad_mask_target_incomplete]
 
     
-    train_x_mtl = train_x_mtl[:,:,4:]
-    test_x = test_x[:,:,4:]
+    # train_x_mtl = train_x_mtl[:,:,4:]
+    # test_x = test_x[:,:,4:]
     
-    pad_mask_target_train = train_x_mtl[:,:,0]==0
-    pad_mask_target_test = test_x[:,:,0]==0
-    train_x_mtl[pad_mask_target_train] = 0.
-    test_x[pad_mask_target_test] = 0.
+    # pad_mask_target_train = train_x_mtl[:,:,0]==0
+    # pad_mask_target_test = test_x[:,:,0]==0
+    # train_x_mtl[pad_mask_target_train] = 0.
+    # test_x[pad_mask_target_test] = 0.
     
-    class_dict={}
-    for y in train_y_mtl:
-        if y not in class_dict:
-            class_dict[y]=1
-        else:
-            class_dict[y]+=1
-    print('MTL train:',dict(sorted(class_dict.items())))
-    class_dict={}
-    for y in test_y:
-        if y not in class_dict:
-            class_dict[y]=1
-        else:
-            class_dict[y]+=1
-    print('MTL test:',dict(sorted(class_dict.items())))
+    # class_dict={}
+    # for y in train_y_mtl:
+    #     if y not in class_dict:
+    #         class_dict[y]=1
+    #     else:
+    #         class_dict[y]+=1
+    # print('MTL train:',dict(sorted(class_dict.items())))
+    # class_dict={}
+    # for y in test_y:
+    #     if y not in class_dict:
+    #         class_dict[y]=1
+    #     else:
+    #         class_dict[y]+=1
+    # print('MTL test:',dict(sorted(class_dict.items())))
 
-    print('Reading Data: (train: geolife + MTL, test: MTL)')
-    # logger.info('Total shape: '+str(train_data.shape))
-    print('GeoLife shape: '+str(train_x_ori.shape))
-    print('MTL shape: '+str(train_x_mtl_ori.shape))
+    # print('Reading Data: (train: geolife + MTL, test: MTL)')
+    # # logger.info('Total shape: '+str(train_data.shape))
+    # print('GeoLife shape: '+str(train_x_ori.shape))
+    # print('MTL shape: '+str(train_x_mtl_ori.shape))
     
-    n_geolife = train_x.shape[0]
-    n_mtl = train_x_mtl.shape[0]
-    train_dataset_geolife = TensorDataset(
-        torch.from_numpy(train_x).to(torch.float),
-        torch.from_numpy(train_y),
-        torch.from_numpy(np.array([0]*n_geolife)).float()
-    )
-    train_dataset_mtl = TensorDataset(
-        torch.from_numpy(train_x_mtl).to(torch.float),
-        torch.from_numpy(train_y_mtl), # add label for debug
-        torch.from_numpy(np.array([1]*n_mtl)).float(),
-        torch.from_numpy(np.arange(n_mtl))
-    )
+    # n_geolife = train_x.shape[0]
+    # n_mtl = train_x_mtl.shape[0]
+    # train_dataset_geolife = TensorDataset(
+    #     torch.from_numpy(train_x).to(torch.float),
+    #     torch.from_numpy(train_y),
+    #     torch.from_numpy(np.array([0]*n_geolife)).float()
+    # )
+    # train_dataset_mtl = TensorDataset(
+    #     torch.from_numpy(train_x_mtl).to(torch.float),
+    #     torch.from_numpy(train_y_mtl), # add label for debug
+    #     torch.from_numpy(np.array([1]*n_mtl)).float(),
+    #     torch.from_numpy(np.arange(n_mtl))
+    # )
 
 
-    sampler = ImbalancedDatasetSampler(train_dataset_geolife, callback_get_label=get_label, num_samples=len(train_dataset_mtl))
-    train_loader_source = DataLoader(train_dataset_geolife, batch_size=min(batch_sizes, len(train_dataset_geolife)), sampler=sampler, num_workers=8, shuffle=False, drop_last=True)
-    train_loader_target = DataLoader(train_dataset_mtl, batch_size=min(batch_sizes, len(train_dataset_mtl)), num_workers=8, shuffle=True, drop_last=False)
-    train_source_iter = ForeverDataIterator(train_loader_source)
-    train_tgt_iter = ForeverDataIterator(train_loader_target)
-    train_loader = (train_source_iter, train_tgt_iter)
+    # sampler = ImbalancedDatasetSampler(train_dataset_geolife, callback_get_label=get_label, num_samples=len(train_dataset_mtl))
+    # train_loader_source = DataLoader(train_dataset_geolife, batch_size=min(batch_sizes, len(train_dataset_geolife)), sampler=sampler, num_workers=8, shuffle=False, drop_last=True)
+    # train_loader_target = DataLoader(train_dataset_mtl, batch_size=min(batch_sizes, len(train_dataset_mtl)), num_workers=8, shuffle=True, drop_last=False)
+    # train_source_iter = ForeverDataIterator(train_loader_source)
+    # train_tgt_iter = ForeverDataIterator(train_loader_target)
+    # train_loader = (train_source_iter, train_tgt_iter)
     
-    train_dataset_ori = TensorDataset(
-        torch.from_numpy(train_x_ori).to(torch.float),
-        torch.from_numpy(train_y_ori)
-    )
-    train_dataset_mtl_ori = TensorDataset(
-        torch.from_numpy(train_x_mtl_ori).to(torch.float),
-        torch.from_numpy(train_y_mtl_ori)
-    )
-    train_loader_source_ori = DataLoader(train_dataset_ori, batch_size=min(batch_sizes, len(train_dataset_geolife)), num_workers=0, shuffle=True, drop_last=False)
-    train_loader_target_ori = DataLoader(train_dataset_mtl_ori, batch_size=min(batch_sizes, len(train_dataset_mtl)), num_workers=0, shuffle=False, drop_last=False)
-    # train_loader_target_ori=train_loader_source_ori=None
+    # train_dataset_ori = TensorDataset(
+    #     torch.from_numpy(train_x_ori).to(torch.float),
+    #     torch.from_numpy(train_y_ori)
+    # )
+    # train_dataset_mtl_ori = TensorDataset(
+    #     torch.from_numpy(train_x_mtl_ori).to(torch.float),
+    #     torch.from_numpy(train_y_mtl_ori)
+    # )
+    # train_loader_source_ori = DataLoader(train_dataset_ori, batch_size=min(batch_sizes, len(train_dataset_geolife)), num_workers=0, shuffle=True, drop_last=False)
+    # train_loader_target_ori = DataLoader(train_dataset_mtl_ori, batch_size=min(batch_sizes, len(train_dataset_mtl)), num_workers=0, shuffle=False, drop_last=False)
+    # # train_loader_target_ori=train_loader_source_ori=None
     
-    test_dataset = TensorDataset(
-        torch.from_numpy(test_x).to(torch.float),
-        torch.from_numpy(test_y),
-    )
-    test_loader = DataLoader(test_dataset, batch_size=min(batch_sizes, len(test_dataset)))
+    # test_dataset = TensorDataset(
+    #     torch.from_numpy(test_x).to(torch.float),
+    #     torch.from_numpy(test_y),
+    # )
+    # test_loader = DataLoader(test_dataset, batch_size=min(batch_sizes, len(test_dataset)))
     
     
     traj_init_filename = '/home/xieyuan/Traj2Image-10.05/datas/cnn_data/traj2image_6class_fixpixel_fixlat3_insert1s_train&test_cnn_0607.pickle'
@@ -669,6 +666,190 @@ def load_data_img(config):
 
 
     return train_source_iter, train_tgt_iter, test_loader, train_loader_target, train_loader_target_ori, train_loader_source_ori, train_loader_source_mix
+
+
+
+
+def load_data(config):
+    batch_sizes = config.training.batch_size
+    
+    input_size = 224
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])
+    transform_standard = {
+        'train': transforms.Compose([
+            transforms.Resize(input_size),
+            transforms.RandomCrop(input_size),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize
+        ]),
+        'val': transforms.Compose([
+            transforms.Resize(input_size),
+            transforms.CenterCrop(input_size),
+            transforms.ToTensor(),
+            normalize
+        ])
+    }
+
+    if "img" in config.model.mode:
+        base_dir = "/home/xieyuan/Traj2Image-10.05/datas/"
+        # base_dir_traj = "/home/yichen/data/"
+    
+        traj_init_filename = base_dir + 'cnn_data/traj2image_6class_fixpixel_fixlat3_insert1s_train&test_cnn_0607.pickle'
+        with open(traj_init_filename, "rb") as f:
+            traj_dataset = pickle.load(f)
+        train_init_traj, test_init_traj = traj_dataset
+        train_x_ori, train_y_ori = map(list, zip(*train_init_traj)) 
+        for i in range(len(train_x_ori)):
+            trip_length = len(train_x_ori[i])
+            if trip_length < config.data.traj_length:
+                train_x_ori[i] = np.pad(train_x_ori[i], ((0, 0), (0, config.data.traj_length - trip_length)), 'constant')
+            else:
+                train_x_ori[i] = train_x_ori[i][:config.data.traj_length]
+        train_x_ori, train_y_ori = np.array(train_x_ori), np.array(train_y_ori)
+        
+        total_input_new = np.zeros((len(train_x_ori), 1, config.data.traj_length, 7))
+        for i in range(len(train_x_ori)):
+            total_input_new[i, 0, :, 0] = train_x_ori[i, :, 5]    #x
+            total_input_new[i, 0, :, 1] = train_x_ori[i, :, 6]    #y
+            total_input_new[i, 0, :, 2] = (train_x_ori[i, :, 0]!=0).astype(float)  #delta_time
+            total_input_new[i, 0, 0, 2] = 1.
+            total_input_new[i, 0, :, 3] = train_x_ori[i, :, 1]    #speed
+            total_input_new[i, 0, :, 4] = train_x_ori[i, :, 3]    #acc
+            total_input_new[i, 0, :, 5] = train_x_ori[i, :, 2]    #bearing
+            total_input_new[i, 0, :, 6] = train_x_ori[i, :, 4]    #bearing-rate
+        train_x_ori = total_input_new.squeeze(1)
+        
+        min_max_list = [(18.249901, 55.975593),(-122.3315333, 126.998528)]
+        for i in range(2):
+            train_x_ori[:,:,i] = (train_x_ori[:,:,i] - min_max_list[i][0])/(min_max_list[i][1]-min_max_list[i][0])
+        
+        
+        imgs_train = []
+        img_dir = base_dir + "OpenStreetMap/global_map_tiles_satellite_zoom18_size50_train_size250/*.png"
+        for file_name in glob.glob(img_dir, recursive=True):
+            imgs_train.append(file_name)
+        print('train:',len(imgs_train))#,'val:',len(tar_imgs_val))
+    
+    else:
+        filename = '/home/yichen/TS2Vec/datafiles/Geolife/traindata_4class_xy_traintest_interpolatedNAN_5s_trip20_new_001meters_withdist_aligninterpolation_InsertAfterSeg_Both_11dim_doubletest_0218.pickle'
+        with open(filename, 'rb') as f:
+            kfold_dataset, X_unlabeled = pickle.load(f)
+        dataset = kfold_dataset
+        
+        train_x = dataset[1].squeeze(1)
+        train_y = dataset[3]
+        train_x = train_x[:,:,4:]   
+        pad_mask_source = train_x[:,:,0]==0
+        train_x[pad_mask_source] = 0.
+        
+        if config.data.interpolated:
+            train_x_ori = dataset[1].squeeze(1)[:,:,2:]
+        else:
+            train_x_ori = dataset[0].squeeze(1)[:,:,2:]
+        train_y_ori = dataset[3]
+        imgs_train=None
+    
+    
+    pad_mask_source_train_ori = train_x_ori[:,:,2]==0
+    train_x_ori[pad_mask_source_train_ori] = 0.
+    
+    
+        
+    
+    if config.data.filter_area:
+        print('filtering area')
+        train_x_ori,train_y_ori, imgs_train = filter_area(train_x_ori, train_y_ori, imgs_train, pad_mask_source_train_ori)
+        pad_mask_source_train_ori = train_x_ori[:,:,2]==0
+
+    if config.data.traj_length<train_x_ori.shape[1]:
+        train_x_ori = train_x_ori[:,:config.data.traj_length,:]
+        pad_mask_source_train_ori = pad_mask_source_train_ori[:,:config.data.traj_length]
+
+    if "seid" in config.model.mode:
+        sid,eid = generate_posid(train_x_ori, pad_mask_source_train_ori)
+        se_id = np.stack([sid, eid]).T
+    else:
+        se_id = None
+
+    if config.data.unnormalize:
+        print('unnormalizing data')
+        minmax_list = [
+            (18.249901, 55.975593), (-122.3315333, 126.998528), \
+            (0.9999933186918497, 1198.999998648651),
+            (0.0, 50118.17550774085),
+            (0.0, 49.95356703911097),
+            (-9.99348698095659, 9.958323482935628),
+            (-39.64566646191948, 1433.3438889109589),
+            (0.0, 359.95536847383516)
+        ]
+        for i in range(7):
+            if i==2:
+                continue
+            train_x_ori[:,:,i] = train_x_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
+    
+    if config.data.filter_nopad:
+        print('filtering nopadding segments')
+        pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
+        train_x_ori = train_x_ori[pad_mask_source_incomplete]
+        train_y_ori = train_y_ori[pad_mask_source_incomplete]
+        if "seid" in config.model.mode:
+            se_id = se_id[pad_mask_source_incomplete]
+        if "img" in config.model.mode:
+            imgs_train = imgs_train[pad_mask_source_incomplete]
+        # np.sum(pad_mask_source_incomplete)
+        
+    class_dict={}
+    for y in train_y_ori:
+        if y not in class_dict:
+            class_dict[y]=1
+        else:
+            class_dict[y]+=1
+    print('Geolife:',dict(sorted(class_dict.items())))
+    print('GeoLife shape: '+str(train_x_ori.shape))
+
+    
+    if "img" in config.model.mode:
+        trainset_mix = create_single_dataset(
+            imgs_train, 
+            train_x_ori,
+            train_y_ori,
+            se_id,
+            transform=transform_standard['train'],
+            part='train'
+        )
+        train_loader_source = DataLoader(trainset_mix, batch_size=min(batch_sizes, len(trainset_mix)), num_workers=0, shuffle=True, drop_last=False)
+    else:
+        train_dataset_source = TensorDataset(
+            torch.from_numpy(train_x_ori).to(torch.float),
+            torch.from_numpy(se_id).to(torch.float),
+            torch.from_numpy(train_y_ori)
+        )
+        train_loader_source = DataLoader(train_dataset_source, batch_size=min(batch_sizes, len(train_dataset_source)), num_workers=0, shuffle=True, drop_last=False)
+        
+    return train_loader_source
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

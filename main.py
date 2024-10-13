@@ -23,7 +23,7 @@ import numpy as np
 import pickle
 import pdb
 
-from data_utils import load_data, load_data_img
+from data_utils import load_data#, load_data_img
 from torchvision.models import resnet50#, ResNet50_Weights
 # This code part from https://github.com/sunlin-ai/diffusion_tutorial
 
@@ -58,26 +58,41 @@ def main(config, logger, exp_dir, args):
     # unet = Guide_UNet(config).cuda()
     # print(unet)
     
-    # traj = np.load('./xxxxxx',
-    #                allow_pickle=True)
-    # traj = traj[:, :, :2]
-    # head = np.load('./xxxxxx',
-    #                allow_pickle=True)
-    # traj = np.swapaxes(traj, 1, 2)
-    # traj = torch.from_numpy(traj).float()
-    # head = torch.from_numpy(head).float()
-    # ###########################################################
-    # # The input shape of traj and head list as follows:
-    # # traj: [batch_size, 2, traj_length]   2: latitude and longitude
-    # # head: [batch_size, 8]   8: departure_time, trip_distance,  trip_time, trip_length, avg_dis, avg_speed, start_id, end_id
-    # ###########################################################
-    # dataset = TensorDataset(traj, head)
-    # dataloader = DataLoader(dataset,
-    #                         batch_size=config.training.batch_size,
-    #                         shuffle=True,
-    #                         num_workers=8)
-    _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
-    dataloader = train_loader_source_ori
+    if args.resume is not None:
+        unet.load_state_dict(torch.load(args.resume), strict=False)
+    
+    if 'img' in config.model.mode:
+        img_encoder = resnet50(True).cuda()
+        for name,param in img_encoder.named_parameters():
+            param.requires_grad = False 
+        img_encoder.eval()
+    
+    # # traj = np.load('./xxxxxx',
+    # #                allow_pickle=True)
+    # # traj = traj[:, :, :2]
+    # # head = np.load('./xxxxxx',
+    # #                allow_pickle=True)
+    # # traj = np.swapaxes(traj, 1, 2)
+    # # traj = torch.from_numpy(traj).float()
+    # # head = torch.from_numpy(head).float()
+    # # ###########################################################
+    # # # The input shape of traj and head list as follows:
+    # # # traj: [batch_size, 2, traj_length]   2: latitude and longitude
+    # # # head: [batch_size, 8]   8: departure_time, trip_distance,  trip_time, trip_length, avg_dis, avg_speed, start_id, end_id
+    # # ###########################################################
+    # # dataset = TensorDataset(traj, head)
+    # # dataloader = DataLoader(dataset,
+    # #                         batch_size=config.training.batch_size,
+    # #                         shuffle=True,
+    # #                         num_workers=8)
+    
+    # _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
+    # dataloader = train_loader_source_ori
+
+    dataloader = load_data(config)
+
+
+
 
     # Training params
     # Set up some parameters
@@ -104,35 +119,37 @@ def main(config, logger, exp_dir, args):
     if not os.path.exists(model_save):
         os.makedirs(model_save)
 
+    unet.train()
     # config.training.n_epochs = 1
     for epoch in range(1, config.training.n_epochs + 1):
         losses = []  # Store losses for later plotting
         for _, batch_data in enumerate(dataloader):
-            x0 = batch_data[0][:,:,:2].cuda() 
+            batch_data_x = batch_data[0].float()
+            x0 = batch_data_x[:,:,:2].cuda() 
             label = batch_data[-1].unsqueeze(1)
             
             if "seid" in config.model.mode:
-                sid = batch_data[1][:,0].unsqueeze(1)
-                eid = batch_data[1][:,1].unsqueeze(1)
+                sid = batch_data[-2][:,0].unsqueeze(1).float()
+                eid = batch_data[-2][:,1].unsqueeze(1).float()
+            if "img" in config.model.mode:
+                img = batch_data[1].cuda() 
+                img_feat = img_encoder(img.float())
+            else:
+                img_feat = None
 
-            # pad_mask = batch_data[0][:,:,2]!=0
+            # pad_mask = batch_data_x[:,:,2]!=0
             # x0 = x0[pad_mask].unsqueeze(0)
             
-            trip_len = torch.sum(batch_data[0][:,:,2]!=0, dim=1).unsqueeze(1)
-            max_feat = torch.max(batch_data[0][:,:,4:8], dim=1)[0] # v, a, j, br
-            avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (trip_len+1e-6)
-            total_dist = torch.sum(batch_data[0][:,:,3], dim=1).unsqueeze(1)
-            total_time = torch.sum(batch_data[0][:,:,2], dim=1).unsqueeze(1)
+            trip_len = torch.sum(batch_data_x[:,:,2]!=0, dim=1).unsqueeze(1)
+            max_feat = torch.max(batch_data_x[:,:,4:8], dim=1)[0] # v, a, j, br
+            avg_feat = torch.sum(batch_data_x[:,:,3:8], dim=1) / (trip_len+1e-6)
+            total_dist = torch.sum(batch_data_x[:,:,3], dim=1).unsqueeze(1)
+            total_time = torch.sum(batch_data_x[:,:,2], dim=1).unsqueeze(1)
             avg_dist = avg_feat[:,0].unsqueeze(1)
             avg_speed = avg_feat[:,1].unsqueeze(1)
             
             trip_len = trip_len / config.data.traj_length
             total_time = total_time / 3000.
-            
-            # print((sid>=256).any(),(eid>=256).any())
-            # if (eid>=256).any():
-            #     pdb.set_trace()
-            # pdb.set_trace()
             
             # head = torch.cat([avg_feat,max_feat,label],dim=1)            
             if config.model.mode == "label_oridiff_normlentime":
@@ -141,21 +158,22 @@ def main(config, logger, exp_dir, args):
                 head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
             elif config.model.mode == "oridiff_normlentime_seid":
                 head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1)
-            elif config.model.mode == "label_oridiff_normlentime_seid":
-                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid, label],dim=1)
+            elif config.model.mode == "label_oridiff_normlentime_seid" or config.model.mode == "label_oridiff_normlentime_seid_img":
+                # head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid, label],dim=1)
+                head = torch.cat([label, total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1)
             else:
                 raise NotImplementedError
 
             head = head.cuda()
             
-            t = torch.randint(low=0, high=n_steps,
-                              size=(len(x0) // 2 + 1, )).cuda()
+            
+            t = torch.randint(low=0, high=n_steps, size=(len(x0) // 2 + 1, )).cuda()
             t = torch.cat([t, n_steps - t - 1], dim=0)[:len(x0)]
             # Get the noised images (xt) and the noise (our target)
             x0 = x0.permute(0,2,1)
             xt, noise = q_xt_x0(x0, t)
             # Run xt through the network to get its predictions
-            pred_noise = unet(xt.float(), t, head)
+            pred_noise = unet(xt.float(), t, head, img_feat=img_feat)
             # Compare the predictions with the targets
             if config.training.loss=='mse':
                 loss = F.mse_loss(noise.float(), pred_noise)
@@ -180,6 +198,7 @@ def main(config, logger, exp_dir, args):
 
 
 def main_img(config, logger, exp_dir, args):
+    raise NotImplemented
 
     # Modified to return the noise itself as well
     def q_xt_x0(x0, t):
@@ -253,24 +272,57 @@ def main_img(config, logger, exp_dir, args):
     for epoch in range(1, config.training.n_epochs + 1):
         losses = []  # Store losses for later plotting
         for _, batch_data in enumerate(dataloader):
-            x0 = batch_data[0][:,:,:2].cuda() 
+            # x0 = batch_data[0][:,:,:2].cuda() 
+            # img = batch_data[1].cuda() 
+            # label = batch_data[2].unsqueeze(1)
+            
             img = batch_data[1].cuda() 
-            label = batch_data[2].unsqueeze(1)
+            x0 = batch_data[0][:,:,:2].cuda() 
+            label = batch_data[-1].unsqueeze(1)
             
-            img_feat = img_encoder(img.float())
-            # img_feat = dim_converter(img_feat)
+            if "seid" in config.model.mode:
+                sid = batch_data[1][:,0].unsqueeze(1)
+                eid = batch_data[1][:,1].unsqueeze(1)
             
+            trip_len = torch.sum(batch_data[0][:,:,2]!=0, dim=1).unsqueeze(1)
             max_feat = torch.max(batch_data[0][:,:,4:8], dim=1)[0] # v, a, j, br
-            avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (torch.sum(batch_data[0][:,:,2]!=0, dim=1)+1e-6).unsqueeze(1)
-
+            avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (trip_len+1e-6)
             total_dist = torch.sum(batch_data[0][:,:,3], dim=1).unsqueeze(1)
             total_time = torch.sum(batch_data[0][:,:,2], dim=1).unsqueeze(1)
             avg_dist = avg_feat[:,0].unsqueeze(1)
             avg_speed = avg_feat[:,1].unsqueeze(1)
             
-            # head = torch.cat([avg_feat,max_feat,label],dim=1)
-            head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
-            head = head.float().cuda()
+            trip_len = trip_len / config.data.traj_length
+            total_time = total_time / 3000.
+                      
+            if config.model.mode == "label_oridiff_normlentime":
+                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, label],dim=1)
+            elif config.model.mode == "label_oridiff":
+                head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
+            elif config.model.mode == "oridiff_normlentime_seid":
+                head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1)
+            elif config.model.mode == "label_oridiff_normlentime_seid":
+                # head = torch.cat([total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid, label],dim=1)
+                head = torch.cat([label, total_dist, total_time, trip_len, avg_dist, avg_speed, sid, eid],dim=1)
+            else:
+                raise NotImplementedError
+            head = head.cuda()
+            
+            
+            img_feat = img_encoder(img.float())
+            # img_feat = dim_converter(img_feat)
+            
+            # max_feat = torch.max(batch_data[0][:,:,4:8], dim=1)[0] # v, a, j, br
+            # avg_feat = torch.sum(batch_data[0][:,:,3:8], dim=1) / (torch.sum(batch_data[0][:,:,2]!=0, dim=1)+1e-6).unsqueeze(1)
+
+            # total_dist = torch.sum(batch_data[0][:,:,3], dim=1).unsqueeze(1)
+            # total_time = torch.sum(batch_data[0][:,:,2], dim=1).unsqueeze(1)
+            # avg_dist = avg_feat[:,0].unsqueeze(1)
+            # avg_speed = avg_feat[:,1].unsqueeze(1)
+            
+            # # head = torch.cat([avg_feat,max_feat,label],dim=1)
+            # head = torch.cat([total_dist, total_time, avg_dist, avg_speed, label],dim=1)
+            # head = head.float().cuda()
             
             t = torch.randint(low=0, high=n_steps, size=(len(x0) // 2 + 1, )).cuda()
             t = torch.cat([t, n_steps - t - 1], dim=0)[:len(x0)]
@@ -318,6 +370,7 @@ if __name__ == "__main__":
     parser.add_argument('--loss', type=str, default='mse', help='activation')
     parser.add_argument('--model', type=str, default='unet', help='activation')
     parser.add_argument('--traj_len', type=int, default=650, help='activation')
+    parser.add_argument('--resume', type=str, default='', help='activation')
 
     tmp_args = parser.parse_args()
     torch.set_num_threads(8)
@@ -375,9 +428,9 @@ if __name__ == "__main__":
     logger.info(args)
     # if config.data.interpolated:
     #     config.data.traj_length=650
-    if 'img' in config.model.mode:
-        config.data.traj_length=600
-        main_img(config, logger, exp_dir, args)
-    else:
-        main(config, logger, exp_dir, args)
+    # if 'img' in config.model.mode:
+    #     config.data.traj_length=600
+    #     main_img(config, logger, exp_dir, args)
+    # else:
+    main(config, logger, exp_dir, tmp_args)
 

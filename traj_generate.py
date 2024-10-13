@@ -40,7 +40,7 @@ config.data.filter_nopad = True
 config.data.unnormalize = True
 config.data.filter_area = False
 config.data.interpolated = tmp_args.interpolated
- 
+
     
 unet = Guide_UNet(config)#.cuda()
 if 'img' in config.model.mode:
