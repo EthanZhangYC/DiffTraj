@@ -219,7 +219,7 @@ def load_data_old(config):
     
     
     if config.data.filter_area:
-        print('filtering area')
+        logger.info('filtering area')
         train_x_ori,train_y_ori = filter_area(train_x_ori, train_y_ori, pad_mask_source_train_ori)
         pad_mask_source_train_ori = train_x_ori[:,:,2]==0
 
@@ -232,7 +232,7 @@ def load_data_old(config):
         se_id = np.stack([sid, eid]).T
 
     if config.data.unnormalize:
-        print('unnormalizing data')
+        logger.info('unnormalizing data')
         minmax_list = [
             (18.249901, 55.975593), (-122.3315333, 126.998528), \
             (0.9999933186918497, 1198.999998648651),
@@ -248,7 +248,7 @@ def load_data_old(config):
             train_x_ori[:,:,i] = train_x_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
     
     if config.data.filter_nopad:
-        print('filtering nopadding segments')
+        logger.info('filtering nopadding segments')
         pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
         train_x_ori = train_x_ori[pad_mask_source_incomplete]
         train_y_ori = train_y_ori[pad_mask_source_incomplete]
@@ -670,7 +670,7 @@ def load_data_img_old(config):
 
 
 
-def load_data(config):
+def load_data(config, logger):
     batch_sizes = config.training.batch_size
     
     input_size = 224
@@ -693,8 +693,9 @@ def load_data(config):
     }
 
     if "img" in config.model.mode:
+        # assert not config.data.filter_area
         base_dir = "/home/xieyuan/Traj2Image-10.05/datas/"
-        # base_dir_traj = "/home/yichen/data/"
+        base_dir = "/home/yichen/data/"
     
         traj_init_filename = base_dir + 'cnn_data/traj2image_6class_fixpixel_fixlat3_insert1s_train&test_cnn_0607.pickle'
         with open(traj_init_filename, "rb") as f:
@@ -754,12 +755,9 @@ def load_data(config):
     
     pad_mask_source_train_ori = train_x_ori[:,:,2]==0
     train_x_ori[pad_mask_source_train_ori] = 0.
-    
-    
-        
-    
+
     if config.data.filter_area:
-        print('filtering area')
+        logger.info('filtering area')
         train_x_ori,train_y_ori, imgs_train = filter_area(train_x_ori, train_y_ori, imgs_train, pad_mask_source_train_ori)
         pad_mask_source_train_ori = train_x_ori[:,:,2]==0
 
@@ -774,7 +772,7 @@ def load_data(config):
         se_id = None
 
     if config.data.unnormalize:
-        print('unnormalizing data')
+        logger.info('unnormalizing data')
         minmax_list = [
             (18.249901, 55.975593), (-122.3315333, 126.998528), \
             (0.9999933186918497, 1198.999998648651),
@@ -790,7 +788,7 @@ def load_data(config):
             train_x_ori[:,:,i] = train_x_ori[:,:,i] * (minmax_list[i][1]-minmax_list[i][0]) + minmax_list[i][0]
     
     if config.data.filter_nopad:
-        print('filtering nopadding segments')
+        logger.info('filtering nopadding segments')
         pad_mask_source_incomplete = np.sum(pad_mask_source_train_ori,axis=1) == 0
         train_x_ori = train_x_ori[pad_mask_source_incomplete]
         train_y_ori = train_y_ori[pad_mask_source_incomplete]
@@ -799,6 +797,7 @@ def load_data(config):
         if "img" in config.model.mode:
             imgs_train = imgs_train[pad_mask_source_incomplete]
         # np.sum(pad_mask_source_incomplete)
+
         
     class_dict={}
     for y in train_y_ori:

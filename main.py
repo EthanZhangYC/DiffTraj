@@ -58,7 +58,8 @@ def main(config, logger, exp_dir, args):
     # unet = Guide_UNet(config).cuda()
     # print(unet)
     
-    if args.resume is not None:
+    if len(args.resume)>0:
+        logger.info("resuming from {}".format(args.resume))
         unet.load_state_dict(torch.load(args.resume), strict=False)
     
     if 'img' in config.model.mode:
@@ -89,7 +90,7 @@ def main(config, logger, exp_dir, args):
     # _,_,_,train_loader_target,train_loader_target_ori,train_loader_source_ori = load_data(config)
     # dataloader = train_loader_source_ori
 
-    dataloader = load_data(config)
+    dataloader = load_data(config, logger)
 
 
 

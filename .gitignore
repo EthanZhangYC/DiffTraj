@@ -3,3 +3,4 @@ model.pt
 run.md
 *.png
 figs
+utils/__pycache__
