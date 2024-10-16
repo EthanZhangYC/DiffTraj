@@ -75,7 +75,11 @@ model_dir_list=[
     "/home/yichen/DiffTraj/results/DiffTraj/1004_ori_filterarea_weight10/models/10-04-07-59-39/unet_200.pt",
 ] 
 filename='1004mtl_traj_ori_len.png'
+head = np.array([[0.0000e+00, 1.1301e-02, 3.2167e-01, 1.0000e+00, 5.6503e-05, 1.1917e-02, 1.6700e+02, 1.6700e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+head = np.array([[1.0000e+00, 2.8011e-02, 1.3333e-01, 1.0000e+00, 1.4006e-04, 7.0259e-02, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
 head = np.array([[2.0000e+00, 6.2662e-02, 1.4033e-01, 1.0000e+00, 3.1331e-04, 1.5628e-01, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+head = np.array([[3.0000e+00, 3.2609e-02, 1.7300e-01, 1.0000e+00, 1.6305e-04, 7.8854e-02, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+
 
 model_dir_list=[
     './model.pt',
@@ -178,6 +182,99 @@ model_dir_list=[
     "/home/yichen/DiffTraj/results/DiffTraj/1008_ori_filterarea_nocond/models/10-08-14-56-44/unet_500.pt",
 ] 
 filename='1009mtl_traj_nocond.png'
+
+
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_5000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_10000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_15000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_20000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_25000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w/models/10-09-10-54-31/unet_30000.pt",
+] 
+filename='1013mtl_traj_4wepoch.png'
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nocond/models/10-09-10-55-53/unet_5000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nocond/models/10-09-10-55-53/unet_10000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nocond/models/10-09-10-55-53/unet_15000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nocond/models/10-09-10-55-53/unet_18000.pt",
+] 
+filename='1013mtl_traj_4wepoch_nocond.png'
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_normlabel/models/10-09-10-59-18/unet_2000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_normlabel/models/10-09-10-59-18/unet_4000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_normlabel/models/10-09-10-59-18/unet_6000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_normlabel/models/10-09-10-59-18/unet_8000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_normlabel/models/10-09-10-59-18/unet_10000.pt",
+] 
+filename='1013mtl_traj_4wepoch_normlabel.png'
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_5000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_10000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_15000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_20000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_25000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_30000.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1009_ori_filterarea_filterpad_epoch4w_nointer/models/10-09-10-54-08/unet_34000.pt",
+] 
+filename='1013mtl_traj_4wepoch_nointer.png'
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass0/models/10-14-23-28-16/unet_200.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass0/models/10-14-23-28-16/unet_400.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass0/models/10-14-23-28-16/unet_600.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass0/models/10-14-23-28-16/unet_800.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass0/models/10-14-23-28-16/unet_1000.pt",
+] 
+filename='1015mtl_traj_cls0.png'
+head = np.array([[0.0000e+00, 1.1301e-02, 3.2167e-01, 1.0000e+00, 5.6503e-05, 1.1917e-02, 1.6700e+02, 1.6700e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass1/models/10-14-23-28-29/unet_200.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass1/models/10-14-23-28-29/unet_400.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass1/models/10-14-23-28-29/unet_600.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass1/models/10-14-23-28-29/unet_800.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1014_ori_filterarea_filterpad_filterclass1/models/10-14-23-28-29/unet_1000.pt",
+] 
+filename='1015mtl_traj_cls1.png'
+# head = np.array([[1.0000e+00, 2.8011e-02, 1.3333e-01, 1.0000e+00, 1.4006e-04, 7.0259e-02, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+# head = np.array([[2.0000e+00, 6.2662e-02, 1.4033e-01, 1.0000e+00, 3.1331e-04, 1.5628e-01, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+# head = np.array([[3.0000e+00, 3.2609e-02, 1.7300e-01, 1.0000e+00, 1.6305e-04, 7.8854e-02, 1.2100e+02, 1.2100e+02],[0.0000e+00, 8.9842e-03, 1.3333e-01, 1.0000e+00, 4.4921e-05, 2.2534e-02, 1.2100e+02, 1.2100e+02]])
+
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd1e4/models/10-15-11-40-09/unet_100.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd1e4/models/10-15-11-40-09/unet_300.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd1e4/models/10-15-11-40-09/unet_500.pt",
+    # "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd1e4/models/10-15-11-40-09/unet_700.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd1e4/models/10-15-11-40-09/unet_900.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd5e4/models/10-15-11-32-00/unet_100.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd5e4/models/10-15-11-32-00/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd5e5/models/10-15-11-32-27/unet_100.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_wd5e5/models/10-15-11-32-27/unet_500.pt"
+] 
+filename='1015mtl_traj_wd.png'
+
+
+model_dir_list=[
+    './model.pt',
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_sgd/models/10-15-11-35-12/unet_100.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_sgd/models/10-15-11-35-12/unet_300.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_sgd/models/10-15-11-35-12/unet_500.pt",
+    "/home/yichen/DiffTraj/results/DiffTraj/1015_ori_filterarea_filterpad_lr1e4_sgd/models/10-15-11-35-12/unet_1000.pt",
+] 
+filename='1015mtl_traj_sgd.png'
 
 
 

@@ -33,7 +33,7 @@ args = {
     },
     'training': {
         'batch_size': 512,
-        'n_epochs': 40000,
+        'n_epochs': 30000,
         'n_iters': 5000000,
         'snapshot_freq': 5000,
         'validation_freq': 2000,

@@ -40,18 +40,14 @@ python main.py \
 
 CUDA_VISIBLE_DEVICES=3 \
 python main_ori.py \
---job_name 1009_ori_filterarea_filterpad_epoch4w
-
-CUDA_VISIBLE_DEVICES=5 \
-python main_ori.py \
---job_name 1009_ori_filterarea_filterpad_epoch4w_normlabel
+--job_name 1016_ori_filterarea_filterpad_epoch4w_lr1e4_wd5e4
 
 
 CUDA_VISIBLE_DEVICES=4 \
 python traj_generate_ori.py 
 
 
-CUDA_VISIBLE_DEVICES=0 \
+CUDA_VISIBLE_DEVICES=6 \
 python main.py \
 --mode label_oridiff_normlentime_seid_img \
 --epoch 40000 \
@@ -60,19 +56,7 @@ python main.py \
 --filter_nopad \
 --interpolated \
 --traj_len 200 \
---job_name 1009_label_oridiff_normlentime_seid_epoch4w_shuffle_filterarea_filterpad_interlen200
-
-CUDA_VISIBLE_DEVICES=4 \
-python main.py \
---mode label_oridiff_normlentime_seid \
---epoch 40000 \
---batch_size 10 \
---filter_area \
---traj_len 200 \
---filter_nopad \
---interpolated \
---resume /home/yichen/DiffTraj/model.pt \
---job_name test
+--job_name 1016_label_oridiff_normlentime_seid_epoch4w_shuffle_filterarea_filterpad_interlen200
 
 
 
