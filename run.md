@@ -37,10 +37,10 @@ python main.py \
 
 
 
-
-CUDA_VISIBLE_DEVICES=3 \
+## also -> embedding 288->6
+CUDA_VISIBLE_DEVICES=2 \
 python main_ori.py \
---job_name 1016_ori_filterarea_filterpad_epoch4w_lr1e4_wd5e4
+--job_name 1016_ori_filterarea_filterpad_epoch4w_lr1e4_wd5e3
 
 
 CUDA_VISIBLE_DEVICES=4 \
@@ -50,13 +50,15 @@ python traj_generate_ori.py
 CUDA_VISIBLE_DEVICES=6 \
 python main.py \
 --mode label_oridiff_normlentime_seid_img \
---epoch 40000 \
+--epoch 30000 \
 --batch_size 1024 \
 --filter_area \
 --filter_nopad \
 --interpolated \
 --traj_len 200 \
---job_name 1016_label_oridiff_normlentime_seid_epoch4w_shuffle_filterarea_filterpad_interlen200
+--lr 1e-4 \
+--wd 5e-4 \
+--job_name 1016_label_oridiff_normlentime_seid_epoch4w_shuffle_filterarea_filterpad_interlen200_lr1e4_wd5e4
 
 
 

@@ -105,7 +105,7 @@ def main(config, logger, exp_dir, args):
     lr = config.training.lr
 
     # optimizer
-    optim = torch.optim.AdamW(unet.parameters(), lr=lr)  # Optimizer
+    optim = torch.optim.AdamW(unet.parameters(), lr=lr, weight_decay=config.training.wd)  # Optimizer
 
     # EMA
     if config.model.ema:
@@ -361,6 +361,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_step', type=int, default=500, help='activation')
     parser.add_argument('--batch_size', type=int, default=1024, help='activation')
     parser.add_argument('--lr', type=float, default=2e-4, help='activation')
+    parser.add_argument('--wd', type=float, default=0, help='activation')
     parser.add_argument('--mode', type=str, default='label_only', help='activation')
     parser.add_argument('--filter_nopad', action='store_true', help='whether to output attention in encoder')
     parser.add_argument('--filter_area', action='store_true', help='whether to output attention in encoder')
@@ -388,6 +389,7 @@ if __name__ == "__main__":
     config.training.n_epochs = tmp_args.epoch
     config.training.batch_size = tmp_args.batch_size
     config.training.lr = tmp_args.lr
+    config.training.wd = tmp_args.wd
     config.training.loss = tmp_args.loss
     config.data.filter_nopad = tmp_args.filter_nopad
     config.data.filter_area = tmp_args.filter_area
