@@ -161,7 +161,7 @@ class WideAndDeep(nn.Module):
         self.wide_fc = nn.Linear(5, embedding_dim)
 
         # Deep part (neural network for categorical attributes)
-        self.depature_embedding = nn.Embedding(288, hidden_dim)
+        self.depature_embedding = nn.Embedding(6, hidden_dim)
         self.sid_embedding = nn.Embedding(257, hidden_dim)
         self.eid_embedding = nn.Embedding(257, hidden_dim)
         self.deep_fc1 = nn.Linear(hidden_dim*3, embedding_dim)
