@@ -1,6 +1,6 @@
 results
 model.pt
-run.md
+run_wild.md
 *.png
 figs
 utils/__pycache__

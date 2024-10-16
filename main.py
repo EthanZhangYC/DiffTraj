@@ -60,7 +60,10 @@ def main(config, logger, exp_dir, args):
     
     if len(args.resume)>0:
         logger.info("resuming from {}".format(args.resume))
-        unet.load_state_dict(torch.load(args.resume), strict=False)
+        ckpt = torch.load(args.resume)
+        del ckpt['guide_emb.depature_embedding.weight']
+        del ckpt['place_emb.depature_embedding.weight']
+        unet.load_state_dict(ckpt, strict=False)
     
     if 'img' in config.model.mode:
         img_encoder = resnet50(True).cuda()
@@ -191,7 +194,7 @@ def main(config, logger, exp_dir, args):
                 ema_helper.update(unet)
         logger.info("<----Epoch-{}----> loss: {:.4f}".format(epoch,np.array(losses).mean()))
 
-        if (epoch) % 100 == 0:
+        if (epoch) % 10 == 0:
             m_path = model_save + f"/unet_{epoch}.pt"
             torch.save(unet.state_dict(), m_path)
             m_path = exp_dir + '/results/' + f"loss_{epoch}.npy"

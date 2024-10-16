@@ -429,7 +429,7 @@ def main(config, logger, exp_dir):
     # optimizer
     lr = 1e-4  # Explore this - might want it lower when training on the full dataset
     optim = torch.optim.AdamW(unet.parameters(), lr=lr, weight_decay=5e-4)  # Optimizer
-    # optim = torch.optim.SGD(unet.parameters(), lr=lr)  # Optimizer
+    optim = torch.optim.SGD(unet.parameters(), lr=lr)  # Optimizer
 
     # EMA
     if config.model.ema:
